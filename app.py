@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return "Welcome to pronote for : " + config['child']
+    return "Welcome to pronote for : " + child
 
 
 @app.route('/lessons')
@@ -33,12 +33,14 @@ def lessons():
                 'teacher': les.teacher_name,
                 'normal': les.normal,
                 'content': content,
-                'start': les.start.isoformat(),
-                'end': les.end.isoformat(),
+                'date': les.start.date().isoformat(),
+                'start': les.start.strftime('%H:%M'),
+                'end': les.end.strftime('%H:%M'),
                 'detention': les.detention,
                 'exempted': les.exempted,
                 'status': les.status,
-                'canceled': les.canceled
+                'canceled': les.canceled,
+                'room': les.classroom
             }
             out.append(json)
 
@@ -75,6 +77,9 @@ if __name__ == '__main__':
                                         ent=_ent)
         if 'child' in config:
             client.set_child(config['child'])
+            child = config['child']
+        else:
+            child = client.children[0].name
     else:
         client = pronotepy.Client(url,
                                   username=config['username'],
