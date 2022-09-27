@@ -28,7 +28,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-   
+
       - name: Create Docker Meta
         id: docker_meta
         uses: docker/metadata-action@v4
@@ -44,11 +44,11 @@ jobs:
             org.opencontainers.image.authors=Eric Chauvin <bdbogjoe@gmail.com>
             org.opencontainers.image.url=https://github.com/bdbogjoe/pronote-rest
             maintainer=bdbogjoe
+      
 
-   
       # Production versions 
       - name: Build and push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: .
           file: ./Dockerfile
