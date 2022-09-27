@@ -4,9 +4,8 @@ import json
 import os
 
 import pronotepy
-from pronotepy import ent
-
 from flask import Flask
+from pronotepy import ent
 
 app = Flask(__name__)
 
@@ -67,15 +66,17 @@ if __name__ == '__main__':
         if config['parent']:
             mode = 'parent'
 
+    url = 'https://' + config['prefix'] + '.index-education.net/pronote/' + mode + '.html'
+
     if mode == 'parent':
-        client = pronotepy.ParentClient('https://' + config['prefix'] + '.index-education.net/pronote/' + mode + '.html',
+        client = pronotepy.ParentClient(url,
                                         username=config['username'],
                                         password=config['password'],
                                         ent=_ent)
         if 'child' in config:
             client.set_child(config['child'])
     else:
-        client = pronotepy.Client('https://' + config['prefix'] + '.index-education.net/pronote/' + mode + '.html',
+        client = pronotepy.Client(url,
                                   username=config['username'],
                                   password=config['password'],
                                   ent=_ent)
