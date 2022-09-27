@@ -1,4 +1,4 @@
-name: Push to Docker.io
+name: Docker release
 
 on:
   push:
