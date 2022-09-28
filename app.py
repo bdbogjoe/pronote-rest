@@ -21,29 +21,7 @@ def lessons():
         out = []
         start = datetime.date.today()
         end = start + datetime.timedelta(days=config['lessons']['days'])
-        for les in client.lessons(start, end):
-
-            content = None
-            if les.content is not None:
-                content = {'title': les.content.title, 'description': les.content.description}
-
-            json = {
-                'id': les.id,
-                'subject': les.subject.name,
-                'teacher': les.teacher_name,
-                'normal': les.normal,
-                'content': content,
-                'start': les.start.isoformat(),
-                'end': les.end.isoformat(),
-                'detention': les.detention,
-                'exempted': les.exempted,
-                'status': les.status,
-                'canceled': les.canceled,
-                'classroom': les.classroom
-            }
-            out.append(json)
-
-        return out
+        return __serialize(client.lessons(start, end))
     else:
         abort(500)
 
@@ -51,23 +29,33 @@ def lessons():
 @app.route('/absences')
 def absences():
     if client.logged_in:
-        out = []
-        start = datetime.date.today()
-        end = start + datetime.timedelta(days=config['lessons']['days'])
-        for abs in client.current_period.absences:
-            json = {
-                'id': abs.id,
-                'from': abs.from_date.isoformat(),
-                'to': abs.to_date.isoformat(),
-                'hours': abs.hours,
-                'days': abs.days,
-                'reasons': abs.reasons
-            }
-            out.append(json)
-
-        return out
+        return __serialize(client.current_period.absences)
     else:
         abort(500)
+
+
+def __serialize(data):
+    if hasattr(data, '__slots__'):
+        out = {}
+        for attr in data.__slots__:
+            if hasattr(data, attr):
+                if attr != '_client' and attr != '_content':
+                    out[attr] = __serialize(getattr(data, attr))
+        return out
+    else:
+        if isinstance(data, str):
+            return data
+        else:
+            try:
+                out = []
+                for item in iter(data):
+                    out.append(__serialize(item))
+                return out
+            except TypeError as te:
+                if isinstance(data, datetime.datetime):
+                    return data.isoformat()
+                else:
+                    return data
 
 
 if __name__ == '__main__':
