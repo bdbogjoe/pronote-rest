@@ -1,6 +1,10 @@
 <html>
 <body>
-<h2>Welcome to pronote for {{ child }}</h2>
+<h2>Welcome to pronote for
+    {% for child in children %}
+    {{ child}}
+    {% endfor %}
+</h2>
 <ul>
     <li><a href="/lessons">Lessons</a></li>
     <li><a href="/absences">Absences</a></li>

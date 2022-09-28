@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('home.html', child=child)
+    return render_template('home.html', children=children.keys())
 
 
 @app.route('/lessons')
