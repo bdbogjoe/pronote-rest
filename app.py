@@ -84,7 +84,7 @@ def __serialize(data):
                     out.append(__serialize(item))
                 return out
             except TypeError as te:
-                if isinstance(data, datetime.datetime):
+                if isinstance(data, datetime.datetime) or isinstance(data, datetime.date):
                     return data.isoformat()
                 else:
                     return data
