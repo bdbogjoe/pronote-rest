@@ -134,7 +134,7 @@ def period():
         client = children[key]
         if client.logged_in:
             out[key] = __serialize(client.current_period)
-            out[key]['overall_average'] = overall_average()
+            out[key]['overall_average'] = __serialize(client.current_period.overall_average)
         else:
             abort(500)
     return out
