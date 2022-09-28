@@ -34,6 +34,38 @@ def absences():
         abort(500)
 
 
+@app.route('/grades')
+def grades():
+    if client.logged_in:
+        return __serialize(client.current_period.grades)
+    else:
+        abort(500)
+
+
+@app.route('/averages')
+def averages():
+    if client.logged_in:
+        return __serialize(client.current_period.averages)
+    else:
+        abort(500)
+
+
+@app.route('/evaluations')
+def evaluations():
+    if client.logged_in:
+        return __serialize(client.current_period.evaluations)
+    else:
+        abort(500)
+
+
+@app.route('/period')
+def period():
+    if client.logged_in:
+        return __serialize(client.current_period)
+    else:
+        abort(500)
+
+
 def __serialize(data):
     if hasattr(data, '__slots__'):
         out = {}
