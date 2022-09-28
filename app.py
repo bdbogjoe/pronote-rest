@@ -18,10 +18,27 @@ def index():
 @app.route('/lessons')
 def lessons():
     if client.logged_in:
-        out = []
         start = datetime.date.today()
         end = start + datetime.timedelta(days=config['lessons']['days'])
         return __serialize(client.lessons(start, end))
+    else:
+        abort(500)
+
+
+@app.route('/discussions')
+def discussions():
+    if client.logged_in:
+        return __serialize(client.discussions())
+    else:
+        abort(500)
+
+
+@app.route('/homework')
+def homework():
+    if client.logged_in:
+        start = datetime.date.today()
+        end = start + datetime.timedelta(days=config['homework']['days'])
+        return __serialize(client.homework(start, end))
     else:
         abort(500)
 
@@ -71,7 +88,7 @@ def __serialize(data):
         out = {}
         for attr in data.__slots__:
             if hasattr(data, attr):
-                if attr != '_client' and attr != '_content':
+                if attr != '_client' and attr != '_content' and attr != '_files':
                     out[attr] = __serialize(getattr(data, attr))
         return out
     else:
@@ -93,6 +110,7 @@ def __serialize(data):
 if __name__ == '__main__':
     defaultConfig = {
         'lessons': {'days': 7},
+        'homework': {'days': 7},
         'parent': True
     }
     with open('config/config.json') as f:
