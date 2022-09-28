@@ -46,6 +46,7 @@ def discussions(child=None):
 
 
 @app.route('/homework')
+@app.route('/homework/<child>')
 @app.route('/homework-<type>')
 @app.route('/homework-<type>/<child>')
 def homework(type=None, child=None):
