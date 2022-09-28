@@ -1,2 +1,2 @@
 flask
-pronotepy==2.6.0
+https://github.com/bain3/pronotepy/archive/master.zip
