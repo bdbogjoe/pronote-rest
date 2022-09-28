@@ -16,34 +16,39 @@ def index():
 
 
 @app.route('/lessons')
-def lessons():
+@app.route('/lessons/<child>')
+def lessons(child=None):
     out = {}
     start = datetime.date.today()
     end = start + datetime.timedelta(days=config['lessons']['days'])
     for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(sorted(client.lessons(start, end), key=get_date))
-        else:
-            abort(500)
+        if child is None or child in key:
+            client = children[key]
+            if client.logged_in:
+                out[key] = __serialize(sorted(client.lessons(start, end), key=get_date))
+            else:
+                abort(500)
     return out
 
 
 @app.route('/discussions')
-def discussions():
+@app.route('/discussions/<child>')
+def discussions(child=None):
     out = {}
     for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(client.discussions())
-        else:
-            abort(500)
+        if child is None or child in key:
+            client = children[key]
+            if client.logged_in:
+                out[key] = __serialize(client.discussions())
+            else:
+                abort(500)
     return out
 
 
 @app.route('/homework')
 @app.route('/homework-<type>')
-def homework(type=None):
+@app.route('/homework-<type>/<child>')
+def homework(type=None, child=None):
     out = {}
     start = datetime.date.today()
     todo = False
@@ -56,13 +61,14 @@ def homework(type=None):
 
     for key in children:
         client = children[key]
-        if client.logged_in:
-            work = sorted(client.homework(start, end), key=get_date)
-            if todo:
-                work = filter(lambda w: not w.done, work)
-            out[key] = __serialize(work)
-        else:
-            abort(500)
+        if child is None or child in key:
+            if client.logged_in:
+                work = sorted(client.homework(start, end), key=get_date)
+                if todo:
+                    work = filter(lambda w: not w.done, work)
+                out[key] = __serialize(work)
+            else:
+                abort(500)
     return out
 
 
