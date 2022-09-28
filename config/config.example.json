@@ -1,7 +1,11 @@
 {
-  "prefix": "0692346a",
-  "username": "",
-  "password": "",
-  "cas": "",
-  "child": ""
+  "accounts":[
+    {
+      "prefix",: "0692346a",
+      "username": "",
+      "password": "",
+      "cas": "",
+      "child": ""
+    }
+  ]
 }

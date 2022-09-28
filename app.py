@@ -127,16 +127,18 @@ def evaluations():
     return out
 
 
+@app.route('/<child>/period')
 @app.route('/period')
-def period():
+def period(child=None):
     out = {}
     for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(client.current_period)
-            out[key]['overall_average'] = __serialize(client.current_period.overall_average)
-        else:
-            abort(500)
+        if child is None or child in key:
+            client = children[key]
+            if client.logged_in:
+                out[key] = __serialize(client.current_period)
+                out[key]['overall_average'] = __serialize(client.current_period.overall_average)
+            else:
+                abort(500)
     return out
 
 
@@ -168,8 +170,8 @@ def __serialize(data):
 
 def __createClient(__child):
     out = pronotepy.ParentClient(url,
-                                 username=config['username'],
-                                 password=config['password'],
+                                 username=account['username'],
+                                 password=account['password'],
                                  ent=_ent)
     if __child is not None and __child != '':
         out.set_child(__child)
@@ -179,45 +181,47 @@ def __createClient(__child):
 if __name__ == '__main__':
     defaultConfig = {
         'lessons': {'days': 7},
-        'homework': {'days': 7},
-        'parent': True
+        'homework': {'days': 7}
     }
     with open('config/config.json') as f:
         config = json.load(f)
 
     config = defaultConfig | config
-    _ent = ''
-    if 'cas' in config:
-        cas = config['cas']
-        if cas is not None:
-            _ent = getattr(ent, cas)
-    mode = 'eleve'
-    if 'parent' in config:
-        if config['parent']:
-            mode = 'parent'
+    children = {}
 
-    url = 'https://' + config['prefix'] + '.index-education.net/pronote/' + mode + '.html'
+    for account in config['accounts']:
+        _ent = ''
+        if 'cas' in account:
+            cas = account['cas']
+            if cas is not None:
+                _ent = getattr(ent, cas)
+        mode = 'eleve'
+        if 'parent' in account:
+            if account['parent']:
+                mode = 'parent'
 
-    if mode == 'parent':
-        if 'child' in config and config['child'] != '':
-            child = config['child']
+        url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
+
+        if mode == 'parent':
+            if 'child' in account and account['child'] != '':
+                child = account['child']
+            else:
+                child = ''
+
+            __client = __createClient(child)
+            children[__client.children[0].name] = __client
+            client = __client
+            if len(__client.children) > 1:
+                for child in __client.children:
+                    if child.name != __client.children[0].name:
+                        # Need to create new client
+                        children[child.name] = __createClient(child.name)
         else:
-            child = ''
-
-        __client = __createClient(child)
-        children = {__client.children[0].name: __client}
-        client = __client
-        if len(__client.children) > 1:
-            for child in __client.children:
-                if child.name != __client.children[0].name:
-                    # Need to create new client
-                    children[child.name] = __createClient(child.name)
-    else:
-        __client = pronotepy.Client(url,
-                                    username=config['username'],
-                                    password=config['password'],
-                                    ent=_ent)
-        children = {__client.info.name: __client}
+            __client = pronotepy.Client(url,
+                                        username=account['username'],
+                                        password=account['password'],
+                                        ent=_ent)
+            children[__client.info.name] = __client
     debug = os.getenv('DEBUG') == 'true'
     port = os.getenv('PORT')
     app.run(host='0.0.0.0', port=port, debug=debug)
