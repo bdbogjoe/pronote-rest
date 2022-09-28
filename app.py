@@ -160,7 +160,8 @@ def __createClient(__child):
 def __refresh():
     for key in children:
         logging.debug("Keep alive for " + key)
-        children[key].post("Presence", 7)
+        if not children[key].session_check():
+            logging.warning("Session is expired for " + key)
 
 
 def __setupRefresh():
