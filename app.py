@@ -23,7 +23,7 @@ def lessons():
     for key in children:
         client = children[key]
         if client.logged_in:
-            out[key] = __serialize(client.lessons(start, end))
+            out[key] = __serialize(sorted(client.lessons(start, end), key=get_date))
         else:
             abort(500)
     return out
@@ -42,7 +42,7 @@ def discussions():
 
 
 @app.route('/homework')
-@app.route('/homework/<type>')
+@app.route('/homework-<type>')
 def homework(type=None):
     out = {}
     start = datetime.date.today()
@@ -57,7 +57,7 @@ def homework(type=None):
     for key in children:
         client = children[key]
         if client.logged_in:
-            work = client.homework(start, end)
+            work = sorted(client.homework(start, end), key=get_date)
             if todo:
                 work = filter(lambda w: not w.done, work)
             out[key] = __serialize(work)
@@ -66,79 +66,7 @@ def homework(type=None):
     return out
 
 
-@app.route('/absences')
-def absences():
-    out = {}
-    for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(client.current_period.absences)
-        else:
-            abort(500)
-    return out
-
-
-@app.route('/overall_average')
-def overall_average():
-    out = {}
-    for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(client.current_period.overall_average)
-        else:
-            abort(500)
-    return out
-
-
-@app.route('/punishments')
-def punishments():
-    out = {}
-    for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(client.current_period.punishments)
-        else:
-            abort(500)
-    return out
-
-
-@app.route('/grades')
-def grades():
-    out = {}
-    for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(client.current_period.grades)
-        else:
-            abort(500)
-    return out
-
-
-@app.route('/averages')
-def averages():
-    out = {}
-    for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(client.current_period.averages)
-        else:
-            abort(500)
-    return out
-
-
-@app.route('/evaluations')
-def evaluations():
-    out = {}
-    for key in children:
-        client = children[key]
-        if client.logged_in:
-            out[key] = __serialize(client.current_period.evaluations)
-        else:
-            abort(500)
-    return out
-
-
-@app.route('/<child>/period')
+@app.route('/period/<child>')
 @app.route('/period')
 def period(child=None):
     out = {}
@@ -148,6 +76,32 @@ def period(child=None):
             if client.logged_in:
                 out[key] = __serialize(client.current_period)
                 out[key]['overall_average'] = __serialize(client.current_period.overall_average)
+            else:
+                abort(500)
+    return out
+
+
+def get_date(data):
+    if hasattr(data, 'date'):
+        data = getattr(data, 'date')
+    if hasattr(data, 'start'):
+        data = getattr(data, 'start')
+
+    return data
+
+
+@app.route('/<type>/<child>')
+@app.route('/<type>')
+def current_period(type, child=None):
+    out = {}
+    for key in children:
+        if child is None or child in key:
+            client = children[key]
+            if client.logged_in:
+                if hasattr(client.current_period, type):
+                    out[key] = __serialize(getattr(client.current_period, type))
+                else:
+                    abort(404)
             else:
                 abort(500)
     return out
