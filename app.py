@@ -62,6 +62,7 @@ def overall_average():
 @app.route('/punishments')
 def punishments():
     if client.logged_in:
+        print (client.current_period.punishments)
         return __serialize(client.current_period.punishments)
     else:
         abort(500)
@@ -121,6 +122,8 @@ def __serialize(data):
             except TypeError as te:
                 if isinstance(data, datetime.datetime) or isinstance(data, datetime.date):
                     return data.isoformat()
+                elif isinstance(data, datetime.timedelta):
+                    return data.total_seconds()
                 else:
                     return data
 
