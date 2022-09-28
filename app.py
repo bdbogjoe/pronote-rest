@@ -134,7 +134,7 @@ if __name__ == '__main__':
                                         username=config['username'],
                                         password=config['password'],
                                         ent=_ent)
-        if 'child' in config:
+        if 'child' in config and config['child'] != '':
             client.set_child(config['child'])
             child = config['child']
         else:
