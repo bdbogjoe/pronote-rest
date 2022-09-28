@@ -1,8 +1,15 @@
 #!flask/bin/python
 import datetime
 import json
-import os
+import logging.config
+import threading
+import time
 
+import schedule
+
+logging.config.fileConfig('logging.conf')
+
+import os
 import pronotepy
 from flask import Flask, abort, render_template
 from pronotepy import ent
@@ -56,7 +63,7 @@ def homework(type=None, child=None):
     if type is not None and type == 'todo':
         todo = True
         start = start + datetime.timedelta(days=1)
-        end = start + datetime.timedelta(days=1)
+        end = start
     else:
         end = start + datetime.timedelta(days=config['homework']['days'])
 
@@ -150,6 +157,20 @@ def __createClient(__child):
     return out
 
 
+def __refresh():
+    for key in children:
+        logging.debug("Keep alive for " + key)
+        children[key].post("Presence", 7)
+
+
+def __setupRefresh():
+    __refresh()
+    schedule.every(5).minutes.do(__refresh)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+
 if __name__ == '__main__':
     defaultConfig = {
         'lessons': {'days': 7},
@@ -163,6 +184,9 @@ if __name__ == '__main__':
 
     for account in config['accounts']:
         _ent = ''
+        tmp = account.copy()
+        tmp['password'] = 'xxxxx'
+        logging.info("Processing account : " + json.dumps(tmp))
         if 'cas' in account:
             cas = account['cas']
             if cas is not None:
@@ -173,6 +197,7 @@ if __name__ == '__main__':
                 mode = 'parent'
 
         url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
+        logging.info("Using url to connect : " + url)
 
         if mode == 'parent':
             if 'child' in account and account['child'] != '':
@@ -196,4 +221,7 @@ if __name__ == '__main__':
             children[__client.info.name] = __client
     debug = os.getenv('DEBUG') == 'true'
     port = os.getenv('PORT')
+
+    processThread = threading.Thread(target=__setupRefresh)
+    processThread.start()
     app.run(host='0.0.0.0', port=port, debug=debug)

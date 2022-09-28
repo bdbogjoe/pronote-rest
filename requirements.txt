@@ -1,2 +1,3 @@
 flask
+schedule
 https://github.com/bain3/pronotepy/archive/master.zip
