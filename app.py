@@ -51,6 +51,22 @@ def absences():
         abort(500)
 
 
+@app.route('/overall_average')
+def overall_average():
+    if client.logged_in:
+        return __serialize(client.current_period.overall_average)
+    else:
+        abort(500)
+
+
+@app.route('/punishments')
+def punishments():
+    if client.logged_in:
+        return __serialize(client.current_period.punishments)
+    else:
+        abort(500)
+
+
 @app.route('/grades')
 def grades():
     if client.logged_in:
@@ -78,7 +94,9 @@ def evaluations():
 @app.route('/period')
 def period():
     if client.logged_in:
-        return __serialize(client.current_period)
+        out = __serialize(client.current_period)
+        out['overall_average'] = overall_average()
+        return out
     else:
         abort(500)
 
