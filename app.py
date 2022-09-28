@@ -17,88 +17,127 @@ def index():
 
 @app.route('/lessons')
 def lessons():
-    if client.logged_in:
-        start = datetime.date.today()
-        end = start + datetime.timedelta(days=config['lessons']['days'])
-        return __serialize(client.lessons(start, end))
-    else:
-        abort(500)
+    out = {}
+    start = datetime.date.today()
+    end = start + datetime.timedelta(days=config['lessons']['days'])
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.lessons(start, end))
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/discussions')
 def discussions():
-    if client.logged_in:
-        return __serialize(client.discussions())
-    else:
-        abort(500)
+    out = {}
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.discussions())
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/homework')
 def homework():
-    if client.logged_in:
-        start = datetime.date.today()
-        end = start + datetime.timedelta(days=config['homework']['days'])
-        return __serialize(client.homework(start, end))
-    else:
-        abort(500)
+    out = {}
+    start = datetime.date.today()
+    end = start + datetime.timedelta(days=config['homework']['days'])
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.homework(start, end))
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/absences')
 def absences():
-    if client.logged_in:
-        return __serialize(client.current_period.absences)
-    else:
-        abort(500)
+    out = {}
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.current_period.absences)
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/overall_average')
 def overall_average():
-    if client.logged_in:
-        return __serialize(client.current_period.overall_average)
-    else:
-        abort(500)
+    out = {}
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.current_period.overall_average)
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/punishments')
 def punishments():
-    if client.logged_in:
-        return __serialize(client.current_period.punishments)
-    else:
-        abort(500)
+    out = {}
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.current_period.punishments)
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/grades')
 def grades():
-    if client.logged_in:
-        return __serialize(client.current_period.grades)
-    else:
-        abort(500)
+    out = {}
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.current_period.grades)
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/averages')
 def averages():
-    if client.logged_in:
-        return __serialize(client.current_period.averages)
-    else:
-        abort(500)
+    out = {}
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.current_period.averages)
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/evaluations')
 def evaluations():
-    if client.logged_in:
-        return __serialize(client.current_period.evaluations)
-    else:
-        abort(500)
+    out = {}
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.current_period.evaluations)
+        else:
+            abort(500)
+    return out
 
 
 @app.route('/period')
 def period():
-    if client.logged_in:
-        out = __serialize(client.current_period)
-        out['overall_average'] = overall_average()
-        return out
-    else:
-        abort(500)
+    out = {}
+    for key in children:
+        client = children[key]
+        if client.logged_in:
+            out[key] = __serialize(client.current_period)
+            out[key]['overall_average'] = overall_average()
+        else:
+            abort(500)
+    return out
 
 
 def __serialize(data):
@@ -127,6 +166,16 @@ def __serialize(data):
                     return data
 
 
+def __createClient(__child):
+    out = pronotepy.ParentClient(url,
+                                 username=config['username'],
+                                 password=config['password'],
+                                 ent=_ent)
+    if __child is not None and __child != '':
+        out.set_child(__child)
+    return out
+
+
 if __name__ == '__main__':
     defaultConfig = {
         'lessons': {'days': 7},
@@ -150,21 +199,25 @@ if __name__ == '__main__':
     url = 'https://' + config['prefix'] + '.index-education.net/pronote/' + mode + '.html'
 
     if mode == 'parent':
-        client = pronotepy.ParentClient(url,
-                                        username=config['username'],
-                                        password=config['password'],
-                                        ent=_ent)
         if 'child' in config and config['child'] != '':
-            client.set_child(config['child'])
             child = config['child']
         else:
-            child = client.children[0].name
-    else:
-        client = pronotepy.Client(url,
-                                  username=config['username'],
-                                  password=config['password'],
-                                  ent=_ent)
+            child = ''
 
+        __client = __createClient(child)
+        children = {__client.children[0].name: __client}
+        client = __client
+        if len(__client.children) > 1:
+            for child in __client.children:
+                if child.name != __client.children[0].name:
+                    # Need to create new client
+                    children[child.name] = __createClient(child.name)
+    else:
+        __client = pronotepy.Client(url,
+                                    username=config['username'],
+                                    password=config['password'],
+                                    ent=_ent)
+        children = {__client.info.name: __client}
     debug = os.getenv('DEBUG') == 'true'
     port = os.getenv('PORT')
     app.run(host='0.0.0.0', port=port, debug=debug)
