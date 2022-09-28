@@ -4,7 +4,7 @@ import json
 import os
 
 import pronotepy
-from flask import Flask, abort
+from flask import Flask, abort, render_template
 from pronotepy import ent
 
 app = Flask(__name__)
@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return "Welcome to pronote for : " + child
+    return render_template('home.html', child=child)
 
 
 @app.route('/lessons')
