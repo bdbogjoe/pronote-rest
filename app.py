@@ -42,14 +42,25 @@ def discussions():
 
 
 @app.route('/homework')
-def homework():
+@app.route('/homework/<type>')
+def homework(type=None):
     out = {}
     start = datetime.date.today()
-    end = start + datetime.timedelta(days=config['homework']['days'])
+    todo = False
+    if type is not None and type == 'todo':
+        todo = True
+        start = start + datetime.timedelta(days=1)
+        end = start + datetime.timedelta(days=1)
+    else:
+        end = start + datetime.timedelta(days=config['homework']['days'])
+
     for key in children:
         client = children[key]
         if client.logged_in:
-            out[key] = __serialize(client.homework(start, end))
+            work = client.homework(start, end)
+            if todo:
+                work = filter(lambda w: not w.done, work)
+            out[key] = __serialize(work)
         else:
             abort(500)
     return out
