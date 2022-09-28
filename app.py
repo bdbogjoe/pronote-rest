@@ -62,7 +62,6 @@ def overall_average():
 @app.route('/punishments')
 def punishments():
     if client.logged_in:
-        print (client.current_period.punishments)
         return __serialize(client.current_period.punishments)
     else:
         abort(500)
