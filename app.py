@@ -125,6 +125,8 @@ def get_date(data):
         data = getattr(data, 'date')
     if hasattr(data, 'start'):
         data = getattr(data, 'start')
+    if hasattr(data, 'creation_date'):
+        data = getattr(data, 'creation_date')
 
     return data
 
