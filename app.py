@@ -2,10 +2,6 @@
 import datetime
 import json
 import logging.config
-import threading
-import time
-
-import schedule
 
 logging.config.fileConfig('logging.conf')
 
@@ -185,21 +181,6 @@ def __createClient(_url, _account, _child, _ent):
     return out
 
 
-def __refresh():
-    for key in children:
-        logging.debug("Keep alive for " + key)
-        if not children[key].session_check():
-            logging.warning("Session was expired for " + key)
-
-
-def __setupRefresh():
-    __refresh()
-    schedule.every(1).minutes.do(__refresh)
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
-
 @app.errorhandler(Exception)
 def internal_error(error):
     message = [str(x) for x in error.args]
@@ -272,6 +253,4 @@ if __name__ == '__main__':
 
     __init()
 
-    processThread = threading.Thread(target=__setupRefresh)
-    processThread.start()
     app.run(host='0.0.0.0', port=port, debug=debug)
