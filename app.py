@@ -38,6 +38,31 @@ def lessons(child=None):
     return out
 
 
+@app.route('/information_and_surveys')
+@app.route('/information_and_surveys/<child>')
+@app.route('/information_and_surveys-<type>')
+@app.route('/information_and_surveys-<type>/<child>')
+def information_and_surveys(type=None, child=None):
+    out = {}
+    start = datetime.datetime.now() - datetime.timedelta(days=config['information_and_surveys']['days'])
+    end = start + datetime.timedelta(days=config['information_and_surveys']['days'])
+    only_unread = False
+    if type is not None:
+        if type == 'unread':
+            only_unread = True
+        else:
+            abort(404)
+
+    for key in children:
+        if child is None or child in key:
+            client = children[key]
+            if client.logged_in:
+                out[key] = __serialize(sorted(client.information_and_surveys(start, end, only_unread), key=get_date))
+            else:
+                abort(500)
+    return out
+
+
 @app.route('/discussions')
 @app.route('/discussions/<child>')
 def discussions(child=None):
@@ -126,7 +151,7 @@ def __serialize(data):
         out = {}
         for attr in data.__slots__:
             if hasattr(data, attr):
-                if attr != '_client' and attr != '_content' and attr != '_files':
+                if attr != '_client' and attr != '_content' and attr != '_files' and attr != '_raw_content':
                     out[attr] = __serialize(getattr(data, attr))
         return out
     else:
@@ -175,7 +200,8 @@ def __setupRefresh():
 if __name__ == '__main__':
     defaultConfig = {
         'lessons': {'days': 7},
-        'homework': {'days': 7}
+        'homework': {'days': 7},
+        "information_and_surveys": {'days': 7},
     }
     with open('config/config.json') as f:
         config = json.load(f)
