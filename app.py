@@ -195,7 +195,7 @@ def __refresh():
 
 def __setupRefresh():
     __refresh()
-    schedule.every(5).minutes.do(__refresh)
+    schedule.every(1).minutes.do(__refresh)
     while True:
         schedule.run_pending()
         time.sleep(1)
