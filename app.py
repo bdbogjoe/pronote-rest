@@ -11,7 +11,8 @@ logging.config.fileConfig('logging.conf')
 
 import os
 import pronotepy
-from flask import Flask, abort, render_template
+from flask import Flask, abort, render_template, jsonify
+
 from pronotepy import ent
 
 app = Flask(__name__)
@@ -188,9 +189,7 @@ def __refresh():
     for key in children:
         logging.debug("Keep alive for " + key)
         if not children[key].session_check():
-            logging.warning("Session is expired for " + key)
-            __init()
-            break
+            logging.warning("Session was expired for " + key)
 
 
 def __setupRefresh():
@@ -199,6 +198,21 @@ def __setupRefresh():
     while True:
         schedule.run_pending()
         time.sleep(1)
+
+
+@app.errorhandler(Exception)
+def internal_error(error):
+    message = [str(x) for x in error.args]
+    status_code = error.code
+    success = False
+    response = {
+        'success': success,
+        'error': {
+            'type': error.__class__.__name__,
+            'message': message
+        }
+    }
+    return jsonify(response), status_code
 
 
 def __init():
