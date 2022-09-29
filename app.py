@@ -9,7 +9,7 @@ import os
 import pronotepy
 from flask import Flask, abort, render_template, jsonify
 
-from pronotepy import ent
+from pronotepy import ent, ENTLoginError
 
 app = Flask(__name__)
 
@@ -179,6 +179,21 @@ def __createClient(_url, _account, _child, _ent):
     if _child is not None and _child != '':
         out.set_child(_child)
     return out
+
+
+@app.errorhandler(ENTLoginError)
+def internal_error(error):
+    logging.error("Handling login error...")
+    __init()
+    success = False
+    response = {
+        'success': success,
+        'error': {
+            'type': error.__class__.__name__,
+            'message': error.args[0]
+        }
+    }
+    return jsonify(response), 401
 
 
 @app.errorhandler(Exception)
