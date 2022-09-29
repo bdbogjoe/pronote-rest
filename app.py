@@ -172,13 +172,13 @@ def __serialize(data):
                     return data
 
 
-def __createClient(__child):
-    out = pronotepy.ParentClient(url,
-                                 username=account['username'],
-                                 password=account['password'],
+def __createClient(_url, _account, _child, _ent):
+    out = pronotepy.ParentClient(_url,
+                                 username=_account['username'],
+                                 password=_account['password'],
                                  ent=_ent)
-    if __child is not None and __child != '':
-        out.set_child(__child)
+    if _child is not None and _child != '':
+        out.set_child(_child)
     return out
 
 
@@ -187,6 +187,8 @@ def __refresh():
         logging.debug("Keep alive for " + key)
         if not children[key].session_check():
             logging.warning("Session is expired for " + key)
+            __init()
+            break
 
 
 def __setupRefresh():
@@ -197,18 +199,7 @@ def __setupRefresh():
         time.sleep(1)
 
 
-if __name__ == '__main__':
-    defaultConfig = {
-        'lessons': {'days': 7},
-        'homework': {'days': 7},
-        "information_and_surveys": {'days': 7},
-    }
-    with open('config/config.json') as f:
-        config = json.load(f)
-
-    config = defaultConfig | config
-    children = {}
-
+def __init():
     for account in config['accounts']:
         _ent = ''
         tmp = account.copy()
@@ -232,22 +223,38 @@ if __name__ == '__main__':
             else:
                 child = ''
 
-            __client = __createClient(child)
+            __client = __createClient(url, account, child, _ent)
             children[__client.children[0].name] = __client
             client = __client
             if len(__client.children) > 1:
                 for child in __client.children:
                     if child.name != __client.children[0].name:
                         # Need to create new client
-                        children[child.name] = __createClient(child.name)
+                        children[child.name] = __createClient(url, account, child.name, _ent)
         else:
             __client = pronotepy.Client(url,
                                         username=account['username'],
                                         password=account['password'],
                                         ent=_ent)
             children[__client.info.name] = __client
+
+
+if __name__ == '__main__':
+    defaultConfig = {
+        'lessons': {'days': 7},
+        'homework': {'days': 7},
+        "information_and_surveys": {'days': 7},
+    }
+    with open('config/config.json') as f:
+        config = json.load(f)
+
+    config = defaultConfig | config
     debug = os.getenv('DEBUG') == 'true'
     port = os.getenv('PORT')
+
+    children = {}
+
+    __init()
 
     processThread = threading.Thread(target=__setupRefresh)
     processThread.start()
