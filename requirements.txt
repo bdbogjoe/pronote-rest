@@ -1,2 +1,3 @@
 flask
+dateutil
 https://github.com/bain3/pronotepy/archive/master.zip
