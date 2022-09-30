@@ -2,14 +2,14 @@
 import datetime
 import json
 import logging.config
+import os
+
+import pronotepy
+from dateutil import rrule
+from flask import Flask, abort, render_template, jsonify
+from pronotepy import ent, ENTLoginError
 
 logging.config.fileConfig('logging.conf')
-
-import os
-import pronotepy
-from flask import Flask, abort, render_template, jsonify
-
-from pronotepy import ent, ENTLoginError
 
 app = Flask(__name__)
 
@@ -74,6 +74,19 @@ def discussions(child=None):
     return out
 
 
+def _nextWorkingDay(_start):
+    r = rrule.rrule(rrule.DAILY,
+                    byweekday=[rrule.MO, rrule.TU, rrule.WE, rrule.TH, rrule.FR],
+                    dtstart=_start)
+    # Create a rruleset
+    rs = rrule.rruleset()
+
+    # Attach our rrule to it
+    rs.rrule(r)
+
+    return r[1].date()
+
+
 @app.route('/homework')
 @app.route('/homework/<child>')
 @app.route('/homework-<type>')
@@ -84,7 +97,7 @@ def homework(type=None, child=None):
     todo = False
     if type is not None and type == 'todo':
         todo = True
-        start = start + datetime.timedelta(days=1)
+        start = _nextWorkingDay(start)
         end = start
     else:
         end = start + datetime.timedelta(days=config['homework']['days'])
@@ -94,6 +107,7 @@ def homework(type=None, child=None):
         if child is None or child in key:
             if client.logged_in:
                 work = sorted(client.homework(start, end), key=get_date)
+
                 if todo:
                     work = filter(lambda w: not w.done, work)
                 out[key] = __serialize(work)
