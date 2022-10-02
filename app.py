@@ -84,7 +84,7 @@ def _nextWorkingDay(_start):
     # Attach our rrule to it
     rs.rrule(r)
 
-    return r[1].date()
+    return r[0].date()
 
 
 @app.route('/homework')
@@ -97,7 +97,7 @@ def homework(type=None, child=None):
     todo = False
     if type is not None and type == 'todo':
         todo = True
-        start = _nextWorkingDay(start)
+        start = _nextWorkingDay(start + datetime.timedelta(days=1))
         end = start
     else:
         end = start + datetime.timedelta(days=config['homework']['days'])
