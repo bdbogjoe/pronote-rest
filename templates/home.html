@@ -1,24 +1,100 @@
 <html>
+<head>
+    <style>
+        .group td {
+            border-top: none;
+        }
+
+        table {
+            border-collapse: collapse;
+            border-top: 1px solid;
+            border-bottom: 1px solid;
+            border-left: 1px solid;
+            border-right: 1px solid;
+        }
+
+        thead td {
+            background-color: gray;
+            color: white;
+        }
+
+        td {
+            padding: 10px;
+            border-top: 1px solid;
+        }
+    </style>
+</head>
 <body>
 <h2>Welcome to pronote for
     {% for child in children %}
     {{ child}}
     {% endfor %}
 </h2>
-<ul>
-    <li><a href="/lessons">Lessons</a></li>
-    <li><a href="/absences">Absences</a></li>
-    <li><a href="/homework">Home work</a></li>
-    <li><a href="/homework-todo">Home work to do for tomorrow</a></li>
-    <li><a href="/averages">Averages</a></li>
-    <li><a href="/overall_average">Overall averages</a></li>
-    <li><a href="/grades">Grades</a></li>
-    <li><a href="/evaluations">Evaluations</a></li>
-    <li><a href="/period">Period</a></li>
-    <li><a href="/punishments">Punishments</a></li>
-    <li><a href="/discussions">Discussions</a></li>
-    <li><a href="/information_and_surveys">Information and surveys</a></li>
-    <li><a href="/information_and_surveys-unread">Information and surveys (Unread only)</a></li>
-</ul>
+<table>
+    <thead>
+    <tr>
+        <td>
+            Name
+        </td>
+        <td>
+            Parameters
+        </td>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td><a href="/lessons">Lessons</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/absences">Absences</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/homework">Home work</a></td>
+        <td>days</td>
+    </tr>
+    <tr class="group">
+        <td><a href="/homework-todo">Home work to do for tomorrow</a></td>
+        <td>days</td>
+    </tr>
+    <tr>
+        <td><a href="/averages">Averages</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/overall_average">Overall averages</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/grades">Grades</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/evaluations">Evaluations</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/period">Period</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/punishments">Punishments</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/discussions">Discussions</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="/information_and_surveys">Information and surveys</a></td>
+        <td></td>
+    </tr>
+    <tr class="group">
+        <td><a href="/information_and_surveys-unread">Information and surveys (Unread only)</a></td>
+        <td></td>
+    </tr>
+    </tbody>
+</table>
 </body>
 </html>

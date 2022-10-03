@@ -6,7 +6,7 @@ import os
 
 import pronotepy
 from dateutil import rrule
-from flask import Flask, abort, render_template, jsonify
+from flask import Flask, abort, render_template, jsonify, request
 from pronotepy import ent, ENTLoginError
 
 logging.config.fileConfig('logging.conf')
@@ -23,8 +23,11 @@ def index():
 @app.route('/lessons/<child>')
 def lessons(child=None):
     out = {}
+    _days = request.args.get('days', default=None, type=int)
+    if _days is None:
+        _days = config['lessons']['days']
     start = datetime.date.today()
-    end = start + datetime.timedelta(days=config['lessons']['days'])
+    end = start + datetime.timedelta(days=_days)
     for key in children:
         if child is None or child in key:
             client = children[key]
@@ -95,13 +98,17 @@ def homework(type=None, child=None):
     out = {}
     start = datetime.date.today()
     todo = False
+    _days = request.args.get('days', default=None, type=int)
     if type is not None and type == 'todo':
         todo = True
         start = _nextWorkingDay(start + datetime.timedelta(days=1))
-        end = start
+        if _days is None:
+            _days = 0
     else:
-        end = start + datetime.timedelta(days=config['homework']['days'])
+        if _days is None:
+            _days = config['homework']['days']
 
+    end = _nextWorkingDay(start + datetime.timedelta(days=_days))
     for key in children:
         client = children[key]
         if child is None or child in key:
