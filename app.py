@@ -213,9 +213,10 @@ def data_period(type, child=None):
             client = children[key]
             if client.logged_in:
                 data = None
-                cpt = 0
+                cpt = 1
                 for p in __periods(client):
-                    if nb_period is None or cpt == nb_period:
+                    current = client.current_period.id
+                    if nb_period is None or cpt == nb_period or nb_period == 0 and p.id == current:
                         if hasattr(p, type):
                             tmp = getattr(p, type)
                             if isinstance(tmp, list):
