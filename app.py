@@ -32,7 +32,7 @@ def lessons(child=None):
         if child is None or child in key:
             client = children[key]
             if client.logged_in:
-                out[key] = __serialize(sorted(client.lessons(start, end), key=get_date))
+                out[key] = __serialize(sorted(client.lessons(start, end), key=get_sort))
             else:
                 abort(500)
     return out
@@ -57,7 +57,7 @@ def information_and_surveys(type=None, child=None):
         if child is None or child in key:
             client = children[key]
             if client.logged_in:
-                out[key] = __serialize(sorted(client.information_and_surveys(start, end, only_unread), key=get_date))
+                out[key] = __serialize(sorted(client.information_and_surveys(start, end, only_unread), key=get_sort))
             else:
                 abort(500)
     return out
@@ -113,7 +113,7 @@ def homework(type=None, child=None):
         client = children[key]
         if child is None or child in key:
             if client.logged_in:
-                work = sorted(client.homework(start, end), key=get_date)
+                work = sorted(client.homework(start, end), key=get_sort)
 
                 if todo:
                     work = filter(lambda w: not w.done, work)
@@ -145,7 +145,7 @@ def __periods(client):
         n = getattr(p, 'name')
         if n.startswith(prefix):
             out.append(p)
-    out = sorted(out, key=get_date)
+    out = sorted(out, key=get_sort)
     return out
 
 
@@ -192,13 +192,18 @@ def __isPeriodValid(period):
     return start <= now and now <= end
 
 
-def get_date(data):
+def get_sort(data):
     if hasattr(data, 'date'):
         data = getattr(data, 'date')
-    if hasattr(data, 'start'):
+    elif hasattr(data, 'start'):
         data = getattr(data, 'start')
-    if hasattr(data, 'creation_date'):
+    elif hasattr(data, 'creation_date'):
         data = getattr(data, 'creation_date')
+    elif hasattr(data, 'name'):
+        data = getattr(data, 'name')
+    elif hasattr(data, 'subject'):
+        data = getattr(data, 'subject')
+        data = getattr(data, 'name')
 
     return data
 
@@ -215,11 +220,11 @@ def data_period(type, child=None):
                 data = None
                 cpt = 1
                 for p in __periods(client):
-                    current = client.current_period.id
+                    current = __currentPeriod(client).id
                     if nb_period is None or cpt == nb_period or nb_period == 0 and p.id == current:
                         if hasattr(p, type):
                             tmp = getattr(p, type)
-                            if isinstance(tmp, list):
+                            if isinstance(tmp, list) and type != 'averages':
                                 if data is None:
                                     data = tmp
                                 else:
@@ -227,12 +232,12 @@ def data_period(type, child=None):
                             else:
                                 if data is None:
                                     data = {}
-                                data[p.name] = tmp
+                                data[p.name] = __serialize(tmp)
                         else:
                             abort(404)
                     cpt = cpt + 1
                 if isinstance(data, list):
-                    data = sorted(data, key=get_date, reverse=True)
+                    data = sorted(data, key=get_sort, reverse=True)
                     data = __serialize(data)
 
                 out[key] = data
@@ -292,10 +297,10 @@ def internal_error(error):
     return jsonify(response), 401
 
 
-@app.errorhandler(Exception)
 def internal_error(error):
+    logging.error(error)
     message = [str(x) for x in error.args]
-    status_code = error.code
+    status_code = 500
     success = False
     response = {
         'success': success,

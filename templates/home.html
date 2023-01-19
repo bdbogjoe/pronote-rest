@@ -30,6 +30,19 @@
     {{ child}}
     {% endfor %}
 </h2>
+<div>
+    <ul>
+        <li>
+            Period = 0 : current period
+        </li>
+        <li>
+            Period = x : period x
+        </li>
+        <li>
+            No period ; all periods
+        </li>
+    </ul>
+</div>
 <table>
     <thead>
     <tr>
@@ -47,10 +60,6 @@
         <td>days</td>
     </tr>
     <tr>
-        <td><a href="/absences">Absences</a></td>
-        <td>period (starting at 0)</td>
-    </tr>
-    <tr>
         <td><a href="/homework">Home work</a></td>
         <td>days</td>
     </tr>
@@ -59,20 +68,24 @@
         <td>days</td>
     </tr>
     <tr>
+        <td><a href="/absences">Absences</a></td>
+        <td>period</td>
+    </tr>
+    <tr>
         <td><a href="/averages">Averages</a></td>
-        <td>period (starting at 0)</td>
+        <td>period</td>
     </tr>
     <tr>
         <td><a href="/overall_average">Overall averages</a></td>
-        <td></td>
+        <td>period</td>
     </tr>
     <tr>
         <td><a href="/grades">Grades</a></td>
-        <td>period (starting at 0)</td>
+        <td>period</td>
     </tr>
     <tr>
         <td><a href="/evaluations">Evaluations</a></td>
-        <td></td>
+        <td>period</td>
     </tr>
     <tr>
         <td><a href="/period">Period</a></td>
