@@ -299,6 +299,7 @@ def internal_error(error):
     return jsonify(response), 401
 
 
+@app.errorhandler(Exception)
 def internal_error(error):
     logging.error(error)
     message = [str(x) for x in error.args]
