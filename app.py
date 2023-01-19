@@ -138,6 +138,20 @@ def period(child=None):
     return out
 
 
+@app.route('/periods/<child>')
+@app.route('/periods')
+def periods(child=None):
+    out = {}
+    for key in children:
+        if child is None or child in key:
+            client = children[key]
+            if client.logged_in:
+                out[key] = __serialize(client.periods)
+            else:
+                abort(500)
+    return out
+
+
 def get_date(data):
     if hasattr(data, 'date'):
         data = getattr(data, 'date')
