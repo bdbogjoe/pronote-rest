@@ -199,6 +199,8 @@ def get_sort(data):
         data = getattr(data, 'start')
     elif hasattr(data, 'creation_date'):
         data = getattr(data, 'creation_date')
+    elif hasattr(data, 'from_date'):
+        data = getattr(data, 'from_date')
     elif hasattr(data, 'name'):
         data = getattr(data, 'name')
     elif hasattr(data, 'subject'):
