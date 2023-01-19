@@ -132,10 +132,20 @@ def period(child=None):
             client = children[key]
             current_period = __currentPeriod(client)
             if client.logged_in:
-                out[key] = __serialize(current_period)
-                out[key]['overall_average'] = __serialize(current_period.overall_average)
+                out[key] = __buildPeriod(current_period)
             else:
                 abort(500)
+    return out
+
+
+def __periods(client):
+    out = []
+    prefix = getattr(client.current_period, 'name')[0:-2]
+    for p in client.periods:
+        n = getattr(p, 'name')
+        if n.startswith(prefix):
+            out.append(p)
+    out = sorted(out, key=get_date)
     return out
 
 
@@ -147,29 +157,39 @@ def periods(child=None):
         if child is None or child in key:
             client = children[key]
             if client.logged_in:
-                out[key] = __serialize(client.periods)
+                data = {}
+                out[key] = data
+                for p in __periods(client):
+                    n = getattr(p, 'name')
+                    data[n] = __buildPeriod(p)
             else:
                 abort(500)
     return out
 
 
+def __buildPeriod(period):
+    out = __serialize(period)
+    out['overall_average'] = period.overall_average
+    return out
+
+
 def __currentPeriod(client):
     out = client.current_period
-    if(__isPeriodValid(out)):
+    if (__isPeriodValid(out)):
         return out
     else:
-        prefix = getattr(out, 'name')[0:-2]
-        for p in client.periods:
+        for p in __periods(client):
             n = getattr(p, 'name')
-            if n.startswith(prefix) and __isPeriodValid(p):
+            if __isPeriodValid(p):
                 return p
     return out
+
 
 def __isPeriodValid(period):
     now = datetime.datetime.now()
     start = getattr(period, 'start')
     end = getattr(period, 'end')
-    return start<=now and now <= end
+    return start <= now and now <= end
 
 
 def get_date(data):
@@ -185,17 +205,36 @@ def get_date(data):
 
 @app.route('/<type>/<child>')
 @app.route('/<type>')
-def current_period(type, child=None):
+def data_period(type, child=None):
     out = {}
+    nb_period = request.args.get('period', default=None, type=int)
     for key in children:
         if child is None or child in key:
             client = children[key]
-            current_period = __currentPeriod(client)
             if client.logged_in:
-                if hasattr(current_period, type):
-                    out[key] = __serialize(getattr(current_period, type))
-                else:
-                    abort(404)
+                data = None
+                cpt = 0
+                for p in __periods(client):
+                    if nb_period is None or cpt == nb_period:
+                        if hasattr(p, type):
+                            tmp = getattr(p, type)
+                            if isinstance(tmp, list):
+                                if data is None:
+                                    data = tmp
+                                else:
+                                    data.extend(tmp)
+                            else:
+                                if data is None:
+                                    data = {}
+                                data[p.name] = tmp
+                        else:
+                            abort(404)
+                    cpt = cpt + 1
+                if isinstance(data, list):
+                    data = sorted(data, key=get_date, reverse=True)
+                    data = __serialize(data)
+
+                out[key] = data
             else:
                 abort(500)
     return out
