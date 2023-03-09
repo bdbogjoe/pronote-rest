@@ -1,6 +1,7 @@
 #!flask/bin/python
 import datetime
 import json
+import logging
 import logging.config
 import os
 
@@ -12,6 +13,8 @@ from pronotepy import ent, ENTLoginError
 logging.config.fileConfig('logging.conf')
 
 app = Flask(__name__, static_url_path='/static')
+
+log = logging.getLogger("pronote-rest")
 
 
 @app.route('/')
@@ -27,6 +30,7 @@ def favicon():
 @app.route('/lessons')
 @app.route('/lessons/<child>')
 def lessons(child=None):
+    log.debug(f"Loading lessons for {child}")
     out = {}
     _days = request.args.get('days', default=None, type=int)
     if _days is None:
@@ -40,6 +44,7 @@ def lessons(child=None):
                 out[key] = __serialize(sorted(client.lessons(start, end), key=get_sort))
             else:
                 abort(500)
+    log.debug(f"Loaded lessons for {child} : {out}")
     return out
 
 
@@ -48,6 +53,7 @@ def lessons(child=None):
 @app.route('/information_and_surveys-<type>')
 @app.route('/information_and_surveys-<type>/<child>')
 def information_and_surveys(type=None, child=None):
+    log.debug(f"Loading information_and_surveys {type} for {child}")
     out = {}
     start = datetime.datetime.now() - datetime.timedelta(days=config['information_and_surveys']['days'])
     end = start + datetime.timedelta(days=config['information_and_surveys']['days'])
@@ -65,12 +71,14 @@ def information_and_surveys(type=None, child=None):
                 out[key] = __serialize(sorted(client.information_and_surveys(start, end, only_unread), key=get_sort))
             else:
                 abort(500)
+    log.debug(f"Loaded information_and_surveys {type} for {child} : {out}")
     return out
 
 
 @app.route('/discussions')
 @app.route('/discussions/<child>')
 def discussions(child=None):
+    log.debug(f"Loading discussions for {child}")
     out = {}
     for key in children:
         if child is None or child in key:
@@ -79,6 +87,7 @@ def discussions(child=None):
                 out[key] = __serialize(client.discussions())
             else:
                 abort(500)
+    log.debug(f"Loaded discussions for {child} : {out}")
     return out
 
 
@@ -100,6 +109,7 @@ def _nextWorkingDay(_start):
 @app.route('/homework-<type>')
 @app.route('/homework-<type>/<child>')
 def homework(type=None, child=None):
+    log.debug(f"Loading homework {type} for {child}")
     out = {}
     start = datetime.date.today()
     todo = False
@@ -125,12 +135,14 @@ def homework(type=None, child=None):
                 out[key] = __serialize(work)
             else:
                 abort(500)
+    log.debug(f"Loaded homework  {type} for {child} : {out}")
     return out
 
 
 @app.route('/period/<child>')
 @app.route('/period')
 def period(child=None):
+    log.debug(f"Loading period for {child}")
     out = {}
     for key in children:
         if child is None or child in key:
@@ -140,6 +152,7 @@ def period(child=None):
                 out[key] = __buildPeriod(current_period)
             else:
                 abort(500)
+    log.debug(f"Loaded period for {child} : {out}")
     return out
 
 
@@ -157,6 +170,7 @@ def __periods(client):
 @app.route('/periods/<child>')
 @app.route('/periods')
 def periods(child=None):
+    log.debug(f"Loading periods for {child}")
     out = {}
     for key in children:
         if child is None or child in key:
@@ -169,6 +183,7 @@ def periods(child=None):
                     data[n] = __buildPeriod(p)
             else:
                 abort(500)
+    log.debug(f"Loaded periods for {child} : {out}")
     return out
 
 
@@ -223,6 +238,7 @@ def get_sort(data):
 @app.route('/<type>/<child>')
 @app.route('/<type>')
 def data_period(type, child=None):
+    log.debug(f"Loading {type} for {child}")
     if type != 'static':
         out = {}
         nb_period = request.args.get('period', default=None, type=int)
@@ -256,6 +272,7 @@ def data_period(type, child=None):
                     out[key] = data
                 else:
                     abort(500)
+        log.debug(f"Loaded {type} for {child} : {out}")
         return out
 
 
@@ -297,7 +314,7 @@ def __createClient(_url, _account, _child, _ent):
 
 @app.errorhandler(ENTLoginError)
 def internal_error(error):
-    logging.error("Handling login error...")
+    log.error("Handling login error...")
     __init()
     success = False
     response = {
@@ -312,7 +329,7 @@ def internal_error(error):
 
 @app.errorhandler(Exception)
 def internal_error(error):
-    logging.error(error)
+    log.error(error)
     message = [str(x) for x in error.args]
     status_code = 500
     success = False
@@ -331,7 +348,7 @@ def __init():
         _ent = ''
         tmp = account.copy()
         tmp['password'] = 'xxxxx'
-        logging.info("Processing account : " + json.dumps(tmp))
+        log.info("Processing account : " + json.dumps(tmp))
         if 'cas' in account:
             cas = account['cas']
             if cas is not None:
@@ -342,7 +359,7 @@ def __init():
                 mode = 'parent'
 
         url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
-        logging.info("Using url to connect : " + url)
+        log.info("Using url to connect : " + url)
 
         if mode == 'parent':
             if 'child' in account and account['child'] != '':
