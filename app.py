@@ -213,7 +213,10 @@ def get_sort(data):
         data = getattr(data, 'name')
     elif hasattr(data, 'given'):
         data = getattr(data, 'given')
-
+    elif hasattr(data, 'id'):
+        data = getattr(data, 'id')
+    else:
+        data = None
     return data
 
 
