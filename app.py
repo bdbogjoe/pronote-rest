@@ -211,6 +211,8 @@ def get_sort(data):
     elif hasattr(data, 'subject'):
         data = getattr(data, 'subject')
         data = getattr(data, 'name')
+    elif hasattr(data, 'given'):
+        data = getattr(data, 'given')
 
     return data
 
