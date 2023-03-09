@@ -20,7 +20,7 @@ def index():
 
 
 @app.route('/favicon.ico')
-def hello():
+def favicon():
     return redirect("/static/favicon.ico")
 
 @app.route('/lessons')
