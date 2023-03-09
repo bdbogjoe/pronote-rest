@@ -23,6 +23,7 @@ def index():
 def favicon():
     return redirect("/static/favicon.ico")
 
+
 @app.route('/lessons')
 @app.route('/lessons/<child>')
 def lessons(child=None):
@@ -217,39 +218,40 @@ def get_sort(data):
 @app.route('/<type>/<child>')
 @app.route('/<type>')
 def data_period(type, child=None):
-    out = {}
-    nb_period = request.args.get('period', default=None, type=int)
-    for key in children:
-        if child is None or child in key:
-            client = children[key]
-            if client.logged_in:
-                data = None
-                cpt = 1
-                for p in __periods(client):
-                    current = __currentPeriod(client).id
-                    if nb_period is None or cpt == nb_period or nb_period == 0 and p.id == current:
-                        if hasattr(p, type):
-                            tmp = getattr(p, type)
-                            if isinstance(tmp, list) and type != 'averages':
-                                if data is None:
-                                    data = tmp
+    if type != 'static':
+        out = {}
+        nb_period = request.args.get('period', default=None, type=int)
+        for key in children:
+            if child is None or child in key:
+                client = children[key]
+                if client.logged_in:
+                    data = None
+                    cpt = 1
+                    for p in __periods(client):
+                        current = __currentPeriod(client).id
+                        if nb_period is None or cpt == nb_period or nb_period == 0 and p.id == current:
+                            if hasattr(p, type):
+                                tmp = getattr(p, type)
+                                if isinstance(tmp, list) and type != 'averages':
+                                    if data is None:
+                                        data = tmp
+                                    else:
+                                        data.extend(tmp)
                                 else:
-                                    data.extend(tmp)
+                                    if data is None:
+                                        data = {}
+                                    data[p.name] = __serialize(tmp)
                             else:
-                                if data is None:
-                                    data = {}
-                                data[p.name] = __serialize(tmp)
-                        else:
-                            abort(404)
-                    cpt = cpt + 1
-                if isinstance(data, list):
-                    data = sorted(data, key=get_sort, reverse=True)
-                    data = __serialize(data)
+                                abort(404)
+                        cpt = cpt + 1
+                    if isinstance(data, list):
+                        data = sorted(data, key=get_sort, reverse=True)
+                        data = __serialize(data)
 
-                out[key] = data
-            else:
-                abort(500)
-    return out
+                    out[key] = data
+                else:
+                    abort(500)
+        return out
 
 
 def __serialize(data):
