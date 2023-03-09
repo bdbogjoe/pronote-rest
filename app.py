@@ -6,18 +6,22 @@ import os
 
 import pronotepy
 from dateutil import rrule
-from flask import Flask, abort, render_template, jsonify, request
+from flask import Flask, abort, render_template, jsonify, request, redirect
 from pronotepy import ent, ENTLoginError
 
 logging.config.fileConfig('logging.conf')
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 
 
 @app.route('/')
 def index():
     return render_template('home.html', children=children.keys())
 
+
+@app.route('/favicon.ico')
+def hello():
+    return redirect("/static/favicon.ico")
 
 @app.route('/lessons')
 @app.route('/lessons/<child>')
