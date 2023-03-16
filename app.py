@@ -356,7 +356,7 @@ def internal_error(error):
 
 def __login():
     with rwlock.gen_wlock():
-        children = {}
+        children.clear()
         log.debug("Login process")
         for account in config['accounts']:
             _ent = ''
@@ -411,6 +411,7 @@ if __name__ == '__main__':
     debug = os.getenv('DEBUG') == 'true'
     port = os.getenv('PORT')
 
+    children = {}
     __login()
 
 app.run(host='0.0.0.0', port=port, debug=debug)
