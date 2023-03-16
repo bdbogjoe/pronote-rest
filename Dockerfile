@@ -16,6 +16,7 @@ COPY app.py .
 COPY logging.conf .
 
 COPY templates templates
+COPY static static
 
 ENTRYPOINT [ "python" ]
 
