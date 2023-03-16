@@ -3,7 +3,6 @@ import datetime
 import json
 import logging.config
 import os
-import asyncio
 
 from readerwriterlock import rwlock
 
@@ -14,7 +13,6 @@ from pronotepy import ent, ENTLoginError
 
 logging.config.fileConfig('logging.conf')
 
-loop = asyncio.get_event_loop()
 app = Flask(__name__, static_url_path='/static')
 
 rwlock = rwlock.RWLockFairD()
@@ -23,7 +21,7 @@ log = logging.getLogger("pronote-rest")
 
 
 @app.route('/')
-async def index():
+def index():
     return render_template('home.html', children=children.keys())
 
 
@@ -34,7 +32,7 @@ def favicon():
 
 @app.route('/lessons')
 @app.route('/lessons/<child>')
-async def lessons(child=None):
+def lessons(child=None):
     with rwlock.gen_rlock():
         out = {}
         log.debug(f"Loading lessons for {child}")
@@ -57,7 +55,7 @@ async def lessons(child=None):
 @app.route('/information_and_surveys/<child>')
 @app.route('/information_and_surveys-<type>')
 @app.route('/information_and_surveys-<type>/<child>')
-async def information_and_surveys(type=None, child=None):
+def information_and_surveys(type=None, child=None):
     with rwlock.gen_rlock():
         log.debug(f"Loading information_and_surveys {type} for {child}")
         out = {}
@@ -83,7 +81,7 @@ async def information_and_surveys(type=None, child=None):
 
 @app.route('/discussions')
 @app.route('/discussions/<child>')
-async def discussions(child=None):
+def discussions(child=None):
     with rwlock.gen_rlock():
         log.debug(f"Loading discussions for {child}")
         out = {}
@@ -115,7 +113,7 @@ def _nextWorkingDay(_start):
 @app.route('/homework/<child>')
 @app.route('/homework-<type>')
 @app.route('/homework-<type>/<child>')
-async def homework(type=None, child=None):
+def homework(type=None, child=None):
     with rwlock.gen_rlock():
         log.debug(f"Loading homework {type} for {child}")
         out = {}
@@ -149,7 +147,7 @@ async def homework(type=None, child=None):
 
 @app.route('/period/<child>')
 @app.route('/period')
-async def period(child=None):
+def period(child=None):
     with rwlock.gen_rlock():
         log.debug(f"Loading period for {child}")
         out = {}
@@ -178,7 +176,7 @@ def __periods(client):
 
 @app.route('/periods/<child>')
 @app.route('/periods')
-async def periods(child=None):
+def periods(child=None):
     with rwlock.gen_rlock():
         log.debug(f"Loading periods for {child}")
         out = {}
@@ -247,7 +245,7 @@ def get_sort(data):
 
 @app.route('/<type>/<child>')
 @app.route('/<type>')
-async def data_period(type, child=None):
+def data_period(type, child=None):
     if type != 'static':
         with rwlock.gen_rlock():
             log.debug(f"Loading {type} for {child}")
@@ -356,7 +354,6 @@ def internal_error(error):
 
 def __login():
     with rwlock.gen_wlock():
-        children.clear()
         log.debug("Login process")
         for account in config['accounts']:
             _ent = ''
