@@ -338,7 +338,7 @@ def internal_error(error):
     return jsonify(response), 401
 
 
-#@app.errorhandler(Exception)
+@app.errorhandler(Exception)
 def internal_error(error):
     log.error(error)
     message = [str(x) for x in error.args]
@@ -356,7 +356,7 @@ def internal_error(error):
 
 def __login():
     with rwlock.gen_wlock():
-        __children = {}
+        children = {}
         log.debug("Login process")
         for account in config['accounts']:
             _ent = ''
@@ -382,21 +382,20 @@ def __login():
                     child = ''
 
                 __client = __createClient(url, account, child, _ent)
-                __children[__client.children[0].name] = __client
+                children[__client.children[0].name] = __client
                 client = __client
                 if len(__client.children) > 1:
                     for child in __client.children:
                         if child.name != __client.children[0].name:
                             # Need to create new client
-                            __children[child.name] = __createClient(url, account, child.name, _ent)
+                            children[child.name] = __createClient(url, account, child.name, _ent)
             else:
                 __client = pronotepy.Client(url,
                                             username=account['username'],
                                             password=account['password'],
                                             ent=_ent)
-                __children[__client.info.name] = __client
-        return __children
-
+                children[__client.info.name] = __client
+        return children
 
 
 if __name__ == '__main__':
@@ -412,6 +411,6 @@ if __name__ == '__main__':
     debug = os.getenv('DEBUG') == 'true'
     port = os.getenv('PORT')
 
-    children = __login()
+    __login()
 
 app.run(host='0.0.0.0', port=port, debug=debug)
