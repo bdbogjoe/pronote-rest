@@ -11,9 +11,18 @@ from dateutil import rrule
 from flask import Flask, render_template, redirect, abort, jsonify, request
 from pronotepy import ent, ENTLoginError
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 logging.config.fileConfig('logging.conf')
 
 app = Flask(__name__, static_url_path='/static')
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["1/second"],
+    storage_uri="memory://",
+)
 
 rwlock = rwlock.RWLockFairD()
 
@@ -354,7 +363,7 @@ def internal_error(error):
 
 def __login():
     with rwlock.gen_wlock():
-        log.debug("Login process")
+        log.info("Login process")
         for account in config['accounts']:
             _ent = ''
             tmp = account.copy()
@@ -392,6 +401,7 @@ def __login():
                                             password=account['password'],
                                             ent=_ent)
                 children[__client.info.name] = __client
+        log.info(f"Login done, found children : {list(children.keys())}")
         return children
 
 

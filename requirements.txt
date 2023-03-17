@@ -2,3 +2,4 @@ flask
 python-dateutil
 pronotepy==2.9.0
 readerwriterlock
+Flask-Limiter
