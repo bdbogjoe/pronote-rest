@@ -348,14 +348,23 @@ def internal_error(error):
 @app.errorhandler(Exception)
 def internal_error(error):
     log.error(error)
-    message = [str(x) for x in error.args]
     status_code = 500
+    description = ""
+    if hasattr(error, 'name'):
+        message = error.name
+    if hasattr(error, 'code'):
+        status_code = error.code
+    if hasattr(error, 'description'):
+        description = error.description
+
     success = False
     response = {
         'success': success,
         'error': {
+            'code': status_code,
+            'message': message,
+            'description': description,
             'type': error.__class__.__name__,
-            'message': message
         }
     }
     return jsonify(response), status_code
