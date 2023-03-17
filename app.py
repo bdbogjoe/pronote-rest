@@ -20,7 +20,7 @@ app = Flask(__name__, static_url_path='/static')
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["100/second"],
+    default_limits=["2/second"],
     storage_uri="memory://",
 )
 
