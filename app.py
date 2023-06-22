@@ -4,15 +4,16 @@ import json
 import logging.config
 import os
 
-from readerwriterlock import rwlock
-
 import pronotepy
 from dateutil import rrule
 from flask import Flask, render_template, redirect, abort, jsonify, request
-from pronotepy import ent, ENTLoginError
-
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from pronotepy import ent, ENTLoginError
+from readerwriterlock import rwlock
+from datetime import datetime
+from datetime import date
+from datetime import timedelta
 
 logging.config.fileConfig('logging.conf')
 
@@ -48,8 +49,8 @@ def lessons(child=None):
         _days = request.args.get('days', default=None, type=int)
         if _days is None:
             _days = config['lessons']['days']
-        start = datetime.date.today()
-        end = start + datetime.timedelta(days=_days)
+        start = date.today()
+        end = start + timedelta(days=_days)
         for key in children:
             if child is None or child in key:
                 client = children[key]
@@ -60,6 +61,7 @@ def lessons(child=None):
         log.debug(f"Loaded lessons for {child} : {out}")
         return out
 
+
 @app.route('/information_and_surveys')
 @app.route('/information_and_surveys/<child>')
 @app.route('/information_and_surveys-<type>')
@@ -68,8 +70,8 @@ def information_and_surveys(type=None, child=None):
     with rwlock.gen_rlock():
         log.debug(f"Loading information_and_surveys {type} for {child}")
         out = {}
-        start = datetime.datetime.now() - datetime.timedelta(days=config['information_and_surveys']['days'])
-        end = start + datetime.timedelta(days=config['information_and_surveys']['days'])
+        start = datetime.now() - timedelta(days=config['information_and_surveys']['days'])
+        end = start + timedelta(days=config['information_and_surveys']['days'])
         only_unread = False
         if type is not None:
             if type == 'unread':
@@ -81,7 +83,8 @@ def information_and_surveys(type=None, child=None):
             if child is None or child in key:
                 client = children[key]
                 if client.logged_in:
-                    out[key] = __serialize(sorted(client.information_and_surveys(start, end, only_unread), key=get_sort))
+                    out[key] = __serialize(
+                        sorted(client.information_and_surveys(start, end, only_unread), key=get_sort))
                 else:
                     abort(500)
         log.debug(f"Loaded information_and_surveys {type} for {child} : {out}")
@@ -126,19 +129,19 @@ def homework(type=None, child=None):
     with rwlock.gen_rlock():
         log.debug(f"Loading homework {type} for {child}")
         out = {}
-        start = datetime.date.today()
+        start = date.today()
         todo = False
         _days = request.args.get('days', default=None, type=int)
         if type is not None and type == 'todo':
             todo = True
-            start = _nextWorkingDay(start + datetime.timedelta(days=1))
+            start = _nextWorkingDay(start + timedelta(days=1))
             if _days is None:
                 _days = 0
         else:
             if _days is None:
                 _days = config['homework']['days']
 
-        end = _nextWorkingDay(start + datetime.timedelta(days=_days))
+        end = _nextWorkingDay(start + timedelta(days=_days))
         for key in children:
             client = children[key]
             if child is None or child in key:
@@ -223,31 +226,32 @@ def __currentPeriod(client):
 
 
 def __isPeriodValid(period):
-    now = datetime.datetime.now()
+    now = datetime.now()
     start = getattr(period, 'start')
     end = getattr(period, 'end')
     return start <= now and now <= end
 
 
 def get_sort(data):
-    if hasattr(data, 'date'):
-        data = getattr(data, 'date')
-    elif hasattr(data, 'start'):
-        data = getattr(data, 'start')
-    elif hasattr(data, 'creation_date'):
-        data = getattr(data, 'creation_date')
-    elif hasattr(data, 'from_date'):
-        data = getattr(data, 'from_date')
-    elif hasattr(data, 'name'):
-        data = getattr(data, 'name')
-    elif hasattr(data, 'subject'):
-        data = getattr(data, 'subject')
-        data = getattr(data, 'name')
-    elif hasattr(data, 'given'):
-        data = getattr(data, 'given')
-    elif hasattr(data, 'id'):
-        data = getattr(data, 'id')
-    else:
+    original = data
+    fields = ["date", "start", "creation_date", "from_date", "name", "subject,name", "given", "schedule,start", "id"]
+    found = False
+    for field in fields:
+        for current in field.split(","):
+            if hasattr(data, current):
+                found = True
+                data = getattr(data, current)
+                if isinstance(data, list):
+                    data = data[0]
+                elif isinstance(data, date):
+                    if not isinstance(data, datetime):
+                        data = datetime.combine(data, datetime.min.time())
+
+        if found:
+            log.debug(f"Using field {field} to compare {__serialize(original)} : {data}")
+            break
+
+    if not found:
         data = None
     return data
 
@@ -312,9 +316,9 @@ def __serialize(data):
                     out.append(__serialize(item))
                 return out
             except TypeError as te:
-                if isinstance(data, datetime.datetime) or isinstance(data, datetime.date):
+                if isinstance(data, datetime) or isinstance(data, date):
                     return data.isoformat()
-                elif isinstance(data, datetime.timedelta):
+                elif isinstance(data, timedelta):
                     return data.total_seconds()
                 else:
                     return data
