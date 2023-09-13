@@ -3,6 +3,9 @@ import datetime
 import json
 import logging.config
 import os
+import sys
+
+from ent import vth_ecollege_haute_garonne_edu
 
 import pronotepy
 from dateutil import rrule
@@ -385,7 +388,12 @@ def __login():
             if 'cas' in account:
                 cas = account['cas']
                 if cas is not None:
-                    _ent = getattr(ent, cas)
+                    if hasattr(ent, cas):
+                        _ent = getattr(ent, cas)
+                    else:
+                        this_module = sys.modules[__name__]
+                        if hasattr(this_module, cas):
+                            _ent = getattr(this_module, cas)
             mode = 'eleve'
             if 'parent' in account:
                 if account['parent']:
