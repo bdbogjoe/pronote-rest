@@ -93,6 +93,25 @@ def information_and_surveys(type=None, child=None):
         log.debug(f"Loaded information_and_surveys {type} for {child} : {out}")
         return out
 
+@app.route('/menus')
+@app.route('/menus/<child>')
+def menus(child=None):
+    with rwlock.gen_rlock():
+        log.debug(f"Loading menus for {child}")
+        out = {}
+        start = date.today()
+        end = start + timedelta(days=5)
+        for key in children:
+            if child is None or child in key:
+                client = children[key]
+                if client.logged_in:
+                    out[key] = __serialize(sorted(client.menus(start, end), key=get_sort))
+                else:
+                    abort(500)
+        log.debug(f"Loaded menus for {child} : {out}")
+        return out
+
+
 
 @app.route('/discussions')
 @app.route('/discussions/<child>')
@@ -355,8 +374,10 @@ def internal_error(error):
 @app.errorhandler(Exception)
 def internal_error(error):
     log.error(error)
+    log.exception(error)
     status_code = 500
     description = ""
+    message=""
     if hasattr(error, 'name'):
         message = error.name
     if hasattr(error, 'code'):
