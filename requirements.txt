@@ -1,5 +1,5 @@
 flask
 python-dateutil
-pronotepy==2.12.1
+pronotepy==2.13.0
 readerwriterlock
 Flask-Limiter
