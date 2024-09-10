@@ -347,10 +347,31 @@ def __serialize(data):
 
 
 def __createClient(_url, _account, _child, _ent):
-    out = pronotepy.ParentClient(_url,
-                                 username=_account['username'],
-                                 password=_account['password'],
-                                 ent=_ent)
+    if _account.get('username') is not None:
+        out = pronotepy.ParentClient(_url,
+                                     username=_account['username'],
+                                     password=_account['password'],
+                                     ent=_ent)
+    elif _account.get('login') is not None:
+        credentials = _account.get('credential')
+        if credentials is not None:
+            out = pronotepy.ParentClient.token_login(credentials['url'], credentials['username'], credentials['password'], credentials['uuid'])
+        else:
+            data = {
+                'url': _url,
+                'login': _account['login'],
+                'jeton': _account['jeton']
+            }
+            out = pronotepy.ParentClient.qrcode_login(data, _account['pin'], 'pronote-rest')
+        _account['credential'] = {
+            "url": out.pronote_url,
+            "username": out.username,
+            "password": out.password,
+            "uuid": out.uuid,
+        }
+    else:
+        raise Exception("Missing auth info")
+
     if _child is not None and _child != '':
         out.set_child(_child)
     return out
@@ -404,7 +425,10 @@ def __login():
         for account in config['accounts']:
             _ent = ''
             tmp = account.copy()
-            tmp['password'] = 'xxxxx'
+            if tmp.get('password') is not None:
+                tmp['password'] = 'xxxxx'
+            if tmp.get('jeton') is not None:
+                tmp['jeton'] = 'xxxxx'
             log.info("Processing account : " + json.dumps(tmp))
             if 'cas' in account:
                 cas = account['cas']
