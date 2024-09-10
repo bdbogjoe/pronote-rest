@@ -467,6 +467,9 @@ def __login():
                                             password=account['password'],
                                             ent=_ent)
                 children[__client.info.name] = __client
+
+        with open("config/config.json", "w") as write_file:
+            json.dump(config, write_file, indent=2)
         log.info(f"Login done, found children : {list(children.keys())}")
         return children
 
