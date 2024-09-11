@@ -4,8 +4,9 @@ import json
 import logging.config
 import os
 import sys
-
-from ent import vth_ecollege_haute_garonne_edu
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 import pronotepy
 from dateutil import rrule
@@ -14,9 +15,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from pronotepy import ent, ENTLoginError
 from readerwriterlock import rwlock
-from datetime import datetime
-from datetime import date
-from datetime import timedelta
 
 logging.config.fileConfig('logging.conf')
 
@@ -93,6 +91,7 @@ def information_and_surveys(type=None, child=None):
         log.debug(f"Loaded information_and_surveys {type} for {child} : {out}")
         return out
 
+
 @app.route('/menus')
 @app.route('/menus/<child>')
 def menus(child=None):
@@ -110,7 +109,6 @@ def menus(child=None):
                     abort(500)
         log.debug(f"Loaded menus for {child} : {out}")
         return out
-
 
 
 @app.route('/discussions')
@@ -352,10 +350,11 @@ def __createClient(_url, _account, _child, _ent):
                                      username=_account['username'],
                                      password=_account['password'],
                                      ent=_ent)
-    elif _account.get('login') is not None:
+    elif _account.get('login') is not None or _account.get('credential') is not None:
         credentials = _account.get('credential')
         if credentials is not None:
-            out = pronotepy.ParentClient.token_login(credentials['url'], credentials['username'], credentials['password'], credentials['uuid'])
+            out = pronotepy.ParentClient.token_login(credentials['url'], credentials['username'], credentials['password'],
+                                                     credentials['uuid'])
         else:
             data = {
                 'url': _url,
@@ -363,6 +362,11 @@ def __createClient(_url, _account, _child, _ent):
                 'jeton': _account['jeton']
             }
             out = pronotepy.ParentClient.qrcode_login(data, _account['pin'], 'pronote-rest')
+        if _account.get('login') is not None:
+            # Remove values
+            del _account['login']
+            del _account['jeton']
+            del _account['pin']
         _account['credential'] = {
             "url": out.pronote_url,
             "username": out.username,
@@ -398,7 +402,7 @@ def internal_error(error):
     log.exception(error)
     status_code = 500
     description = ""
-    message=""
+    message = ""
     if hasattr(error, 'name'):
         message = error.name
     if hasattr(error, 'code'):
@@ -422,6 +426,7 @@ def internal_error(error):
 def __login():
     with rwlock.gen_wlock():
         log.info("Login process")
+        _storeCredentials = False
         for account in config['accounts']:
             _ent = ''
             tmp = account.copy()
@@ -456,6 +461,8 @@ def __login():
                 __client = __createClient(url, account, child, _ent)
                 children[__client.children[0].name] = __client
                 client = __client
+                if __client.login_mode == 'token' or __client.login_mode == 'qr_code':
+                    _storeCredentials = True
                 if len(__client.children) > 1:
                     for child in __client.children:
                         if child.name != __client.children[0].name:
@@ -468,8 +475,9 @@ def __login():
                                             ent=_ent)
                 children[__client.info.name] = __client
 
-        with open("config/config.json", "w") as write_file:
-            json.dump(config, write_file, indent=2)
+        if _storeCredentials:
+            with open("config/config.generated.json", "w") as write_file:
+                json.dump(config, write_file, indent=2)
         log.info(f"Login done, found children : {list(children.keys())}")
         return children
 
@@ -480,8 +488,12 @@ if __name__ == '__main__':
         'homework': {'days': 7},
         "information_and_surveys": {'days': 7},
     }
-    with open('config/config.json') as f:
-        config = json.load(f)
+    if os.path.isfile('config/config.generated.json'):
+        with open('config/config.generated.json') as f:
+            config = json.load(f)
+    else:
+        with open('config/config.json') as f:
+            config = json.load(f)
 
     config = defaultConfig | config
     debug = os.getenv('DEBUG') == 'true'
