@@ -4,9 +4,13 @@ import json
 import logging.config
 import os
 import sys
+
+import ent
+
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import pronotepy
 from pronotepy import CryptoError
@@ -17,6 +21,7 @@ from flask_limiter.util import get_remote_address
 from pronotepy import ent, ENTLoginError
 from readerwriterlock import rwlock
 
+scheduler = BackgroundScheduler()
 logging.config.fileConfig('logging.conf')
 
 app = Flask(__name__, static_url_path='/static')
@@ -487,8 +492,6 @@ def __login():
             os.remove("config/config.generated.json")
         raise ex
 
-
-
 if __name__ == '__main__':
     defaultConfig = {
         'lessons': {'days': 7},
@@ -508,5 +511,7 @@ if __name__ == '__main__':
 
     children = {}
     __login()
+    scheduler.add_job(__login, trigger="interval", seconds=300)
+    scheduler.start()
 
 app.run(host='0.0.0.0', port=port, debug=debug)

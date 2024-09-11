@@ -3,3 +3,4 @@ python-dateutil
 pronotepy==2.13.1
 readerwriterlock
 Flask-Limiter
+APScheduler
