@@ -479,8 +479,7 @@ def __login():
 
                 __client = __create_client(url, account, child, _ent)
                 children[__client.children[0].name] = __client
-                client = __client
-                if __client.login_mode == 'token' or __client.login_mode == 'qr_code':
+                if __is_credential(__client):
                     _storeCredentials = True
                 if len(__client.children) > 1:
                     for child in __client.children:
@@ -513,7 +512,7 @@ def __cron_refresh():
                 client = children[key]
                 if client.logged_in:
                     client.refresh()
-                    if client.login_mode == 'token' or client.login_mode == 'qr_code':
+                    if __is_credential(client):
                         for account in config[ACCOUNTS]:
                             credentials = account[CREDENTIAL]
                             if credentials['uuid'] == client.uuid:
@@ -525,6 +524,10 @@ def __cron_refresh():
             raise ex
     else:
         log.warning("Too many login error, skipping")
+
+
+def __is_credential(client):
+    return client.login_mode == 'token' or client.login_mode == 'qr_code'
 
 
 if __name__ == '__main__':
