@@ -15,7 +15,6 @@ from dateutil import rrule
 from flask import Flask, render_template, redirect, abort, jsonify, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from pronotepy import CryptoError
 from pronotepy import ent, ENTLoginError
 from readerwriterlock import rwlock
 
@@ -503,28 +502,6 @@ def __storeConfig():
         json.dump(config, write_file, indent=2)
 
 
-def __cron_refresh():
-    global error
-    if error < 5:
-        try:
-            for key in children:
-                client = children[key]
-                if client.logged_in:
-                    client.refresh()
-                    if __is_credential(client):
-                        for account in config[ACCOUNTS]:
-                            credentials = account[CREDENTIAL]
-                            if credentials['uuid'] == client.uuid:
-                                account[CREDENTIAL] = __build_credentials(client)
-                        __storeConfig()
-        except CryptoError as ex:
-            error += 1
-            __login()
-            raise ex
-    else:
-        log.warning("Too many login error, skipping")
-
-
 def __is_credential(client):
     return client.login_mode == 'token' or client.login_mode == 'qr_code'
 
@@ -548,9 +525,6 @@ if __name__ == '__main__':
 
     children = {}
     _seconds = 300
-    if __login():
-        log.info("Adding job to refresh client every " + str(_seconds) + 's')
-        scheduler.add_job(__cron_refresh, trigger="interval", seconds=_seconds)
-        scheduler.start()
+    __login()
 
 app.run(host='0.0.0.0', port=port, debug=debug)
