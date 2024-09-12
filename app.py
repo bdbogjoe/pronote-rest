@@ -383,8 +383,9 @@ def __createClient(_url, _account, _child, _ent):
         out.set_child(_child)
     return out
 
+
 def __buildCredentials(_client):
-    return  {
+    return {
         "url": _client.pronote_url,
         "username": _client.username,
         "password": _client.password,
@@ -489,13 +490,15 @@ def __login():
         if _storeCredentials:
             __storeConfig()
         log.info(f"Login done, found children : {list(children.keys())}")
-        return children
+        return _storeCredentials
+
 
 def __storeConfig():
     with open("config/config.generated.json", "w") as write_file:
         json.dump(config, write_file, indent=2)
 
-def __cron_login():
+
+def __cron_refresh():
     global error
     if error < 5:
         try:
@@ -503,11 +506,12 @@ def __cron_login():
                 client = children[key]
                 if client.logged_in:
                     client.refresh()
-                    for account in config['accounts']:
-                        credentials = account['credential']
-                        if credentials['uuid'] == client.uuid:
-                            account['credential'] = __buildCredentials(client)
-            __storeConfig()
+                    if client.login_mode == 'token' or client.login_mode == 'qr_code':
+                        for account in config['accounts']:
+                            credentials = account['credential']
+                            if credentials['uuid'] == client.uuid:
+                                account['credential'] = __buildCredentials(client)
+                        __storeConfig()
         except CryptoError as ex:
             error += 1
             __login()
@@ -534,8 +538,10 @@ if __name__ == '__main__':
     port = os.getenv('PORT')
 
     children = {}
-    __login()
-    scheduler.add_job(__cron_login, trigger="interval", seconds=300)
-    scheduler.start()
+    _seconds = 300
+    if __login():
+        log.info("Adding job to refresh client every " + str(_seconds) + 's')
+        scheduler.add_job(__cron_refresh, trigger="interval", seconds=_seconds)
+        scheduler.start()
 
 app.run(host='0.0.0.0', port=port, debug=debug)
