@@ -21,6 +21,13 @@ from readerwriterlock import rwlock
 
 import ent
 
+ACCOUNTS = 'accounts'
+
+CREDENTIAL = 'credential'
+
+CONFIG_CONFIG_JSON = 'config/config.json'
+CONFIG_GENERATED_JSON = 'config/config.generated.json'
+
 scheduler = BackgroundScheduler()
 logging.config.fileConfig('logging.conf')
 
@@ -351,14 +358,14 @@ def __serialize(data):
                     return data
 
 
-def __createClient(_url, _account, _child, _ent):
+def __create_client(_url, _account, _child, _ent):
     if _account.get('username') is not None:
         out = pronotepy.ParentClient(_url,
                                      username=_account['username'],
                                      password=_account['password'],
                                      ent=_ent)
-    elif _account.get('login') is not None or _account.get('credential') is not None:
-        credentials = _account.get('credential')
+    elif _account.get('login') is not None or _account.get(CREDENTIAL) is not None:
+        credentials = _account.get(CREDENTIAL)
         if credentials is None:
             data = {
                 'url': _url,
@@ -366,10 +373,10 @@ def __createClient(_url, _account, _child, _ent):
                 'jeton': _account['jeton']
             }
             out = pronotepy.ParentClient.qrcode_login(data, _account['pin'], str(uuid.uuid4()))
-            credentials = __buildCredentials(out)
+            credentials = __build_credentials(out)
         log.info("Using credentials : " + str(credentials))
         out = pronotepy.ParentClient.token_login(credentials['url'], credentials['username'], credentials['password'], credentials['uuid'])
-        _account['credential'] = __buildCredentials(out)
+        _account[CREDENTIAL] = __build_credentials(out)
         if _account.get('login') is not None:
             # Remove values
             del _account['login']
@@ -384,7 +391,7 @@ def __createClient(_url, _account, _child, _ent):
     return out
 
 
-def __buildCredentials(_client):
+def __build_credentials(_client):
     return {
         "url": _client.pronote_url,
         "username": _client.username,
@@ -439,7 +446,7 @@ def __login():
     with rwlock.gen_wlock():
         log.info("Login process")
         _storeCredentials = False
-        for account in config['accounts']:
+        for account in config[ACCOUNTS]:
             _ent = ''
             tmp = account.copy()
             if tmp.get('password') is not None:
@@ -470,7 +477,7 @@ def __login():
                 else:
                     child = ''
 
-                __client = __createClient(url, account, child, _ent)
+                __client = __create_client(url, account, child, _ent)
                 children[__client.children[0].name] = __client
                 client = __client
                 if __client.login_mode == 'token' or __client.login_mode == 'qr_code':
@@ -479,7 +486,7 @@ def __login():
                     for child in __client.children:
                         if child.name != __client.children[0].name:
                             # Need to create new client
-                            children[child.name] = __createClient(url, account, child.name, _ent)
+                            children[child.name] = __create_client(url, account, child.name, _ent)
             else:
                 __client = pronotepy.Client(url,
                                             username=account["username"],
@@ -494,7 +501,7 @@ def __login():
 
 
 def __storeConfig():
-    with open("config/config.generated.json", "w") as write_file:
+    with open(CONFIG_GENERATED_JSON, "w") as write_file:
         json.dump(config, write_file, indent=2)
 
 
@@ -507,10 +514,10 @@ def __cron_refresh():
                 if client.logged_in:
                     client.refresh()
                     if client.login_mode == 'token' or client.login_mode == 'qr_code':
-                        for account in config['accounts']:
-                            credentials = account['credential']
+                        for account in config[ACCOUNTS]:
+                            credentials = account[CREDENTIAL]
                             if credentials['uuid'] == client.uuid:
-                                account['credential'] = __buildCredentials(client)
+                                account[CREDENTIAL] = __build_credentials(client)
                         __storeConfig()
         except CryptoError as ex:
             error += 1
@@ -526,11 +533,11 @@ if __name__ == '__main__':
         'homework': {'days': 7},
         "information_and_surveys": {'days': 7},
     }
-    if os.path.isfile('config/config.generated.json'):
-        with open('config/config.generated.json') as f:
+    if os.path.isfile(CONFIG_GENERATED_JSON):
+        with open(CONFIG_GENERATED_JSON) as f:
             config = json.load(f)
     else:
-        with open('config/config.json') as f:
+        with open(CONFIG_CONFIG_JSON) as f:
             config = json.load(f)
 
     config = defaultConfig | config
