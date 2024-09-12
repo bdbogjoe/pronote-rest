@@ -430,67 +430,62 @@ def internal_error(error):
 
 
 def __login():
-    try:
-        with rwlock.gen_wlock():
-            log.info("Login process")
-            _storeCredentials = False
-            for account in config['accounts']:
-                _ent = ''
-                tmp = account.copy()
-                if tmp.get('password') is not None:
-                    tmp['password'] = 'xxxxx'
-                if tmp.get('jeton') is not None:
-                    tmp['jeton'] = 'xxxxx'
-                log.info("Processing account : " + json.dumps(tmp))
-                if 'cas' in account:
-                    cas = account['cas']
-                    if cas is not None:
-                        if hasattr(ent, cas):
-                            _ent = getattr(ent, cas)
-                        else:
-                            this_module = sys.modules[__name__]
-                            if hasattr(this_module, cas):
-                                _ent = getattr(this_module, cas)
-                mode = 'eleve'
-                if 'parent' in account:
-                    if account['parent']:
-                        mode = 'parent'
-
-                url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
-                log.info("Using url to connect : " + url)
-
-                if mode == 'parent':
-                    if 'child' in account and account['child'] != '':
-                        child = account['child']
+    with rwlock.gen_wlock():
+        log.info("Login process")
+        _storeCredentials = False
+        for account in config['accounts']:
+            _ent = ''
+            tmp = account.copy()
+            if tmp.get('password') is not None:
+                tmp['password'] = 'xxxxx'
+            if tmp.get('jeton') is not None:
+                tmp['jeton'] = 'xxxxx'
+            log.info("Processing account : " + json.dumps(tmp))
+            if 'cas' in account:
+                cas = account['cas']
+                if cas is not None:
+                    if hasattr(ent, cas):
+                        _ent = getattr(ent, cas)
                     else:
-                        child = ''
+                        this_module = sys.modules[__name__]
+                        if hasattr(this_module, cas):
+                            _ent = getattr(this_module, cas)
+            mode = 'eleve'
+            if 'parent' in account:
+                if account['parent']:
+                    mode = 'parent'
 
-                    __client = __createClient(url, account, child, _ent)
-                    children[__client.children[0].name] = __client
-                    client = __client
-                    if __client.login_mode == 'token' or __client.login_mode == 'qr_code':
-                        _storeCredentials = True
-                    if len(__client.children) > 1:
-                        for child in __client.children:
-                            if child.name != __client.children[0].name:
-                                # Need to create new client
-                                children[child.name] = __createClient(url, account, child.name, _ent)
+            url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
+            log.info("Using url to connect : " + url)
+
+            if mode == 'parent':
+                if 'child' in account and account['child'] != '':
+                    child = account['child']
                 else:
-                    __client = pronotepy.Client(url,
-                                                username=account['username'],
-                                                password=account['password'],
-                                                ent=_ent)
-                    children[__client.info.name] = __client
+                    child = ''
 
-            if _storeCredentials:
-                with open("config/config.generated.json", "w") as write_file:
-                    json.dump(config, write_file, indent=2)
-            log.info(f"Login done, found children : {list(children.keys())}")
-            return children
-    except CryptoError as ex:
-        if os.path.isfile('config/config.generated.json'):
-            os.remove("config/config.generated.json")
-        raise ex
+                __client = __createClient(url, account, child, _ent)
+                children[__client.children[0].name] = __client
+                client = __client
+                if __client.login_mode == 'token' or __client.login_mode == 'qr_code':
+                    _storeCredentials = True
+                if len(__client.children) > 1:
+                    for child in __client.children:
+                        if child.name != __client.children[0].name:
+                            # Need to create new client
+                            children[child.name] = __createClient(url, account, child.name, _ent)
+            else:
+                __client = pronotepy.Client(url,
+                                            username=account['username'],
+                                            password=account['password'],
+                                            ent=_ent)
+                children[__client.info.name] = __client
+
+        if _storeCredentials:
+            with open("config/config.generated.json", "w") as write_file:
+                json.dump(config, write_file, indent=2)
+        log.info(f"Login done, found children : {list(children.keys())}")
+        return children
 
 if __name__ == '__main__':
     defaultConfig = {
