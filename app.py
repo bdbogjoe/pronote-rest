@@ -374,7 +374,6 @@ def __create_client(_url, _account, _child, _ent):
             }
             out = pronotepy.ParentClient.qrcode_login(data, _account['pin'], str(uuid.uuid4()))
             credentials = __build_credentials(out)
-        log.info("Using credentials : " + str(credentials))
         out = pronotepy.ParentClient.token_login(credentials['url'], credentials['username'], credentials['password'], credentials['uuid'])
         _account[CREDENTIAL] = __build_credentials(out)
         if _account.get('login') is not None:
