@@ -4,22 +4,22 @@ import json
 import logging.config
 import os
 import sys
-
-import ent
-
+import uuid
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
 
 import pronotepy
-from pronotepy import CryptoError
+from apscheduler.schedulers.background import BackgroundScheduler
 from dateutil import rrule
 from flask import Flask, render_template, redirect, abort, jsonify, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from pronotepy import CryptoError
 from pronotepy import ent, ENTLoginError
 from readerwriterlock import rwlock
+
+import ent
 
 scheduler = BackgroundScheduler()
 logging.config.fileConfig('logging.conf')
@@ -33,6 +33,7 @@ limiter = Limiter(
 )
 
 rwlock = rwlock.RWLockFairD()
+error = 0
 
 log = logging.getLogger("pronote-rest")
 
@@ -358,33 +359,37 @@ def __createClient(_url, _account, _child, _ent):
                                      ent=_ent)
     elif _account.get('login') is not None or _account.get('credential') is not None:
         credentials = _account.get('credential')
-        if credentials is not None:
-            out = pronotepy.ParentClient.token_login(credentials['url'], credentials['username'], credentials['password'],
-                                                     credentials['uuid'])
-        else:
+        if credentials is None:
             data = {
                 'url': _url,
                 'login': _account['login'],
                 'jeton': _account['jeton']
             }
-            out = pronotepy.ParentClient.qrcode_login(data, _account['pin'], 'pronote-rest')
+            out = pronotepy.ParentClient.qrcode_login(data, _account['pin'], str(uuid.uuid4()))
+            credentials = __buildCredentials(out)
+        log.info("Using credentials : " + str(credentials))
+        out = pronotepy.ParentClient.token_login(credentials['url'], credentials['username'], credentials['password'], credentials['uuid'])
+        _account['credential'] = __buildCredentials(out)
         if _account.get('login') is not None:
             # Remove values
             del _account['login']
             del _account['jeton']
             del _account['pin']
-        _account['credential'] = {
-            "url": out.pronote_url,
-            "username": out.username,
-            "password": out.password,
-            "uuid": out.uuid,
-        }
+
     else:
         raise Exception("Missing auth info")
 
     if _child is not None and _child != '':
         out.set_child(_child)
     return out
+
+def __buildCredentials(_client):
+    return  {
+        "url": _client.pronote_url,
+        "username": _client.username,
+        "password": _client.password,
+        "uuid": _client.uuid,
+    }
 
 
 @app.errorhandler(ENTLoginError)
@@ -476,16 +481,40 @@ def __login():
                             children[child.name] = __createClient(url, account, child.name, _ent)
             else:
                 __client = pronotepy.Client(url,
-                                            username=account['username'],
-                                            password=account['password'],
+                                            username=account["username"],
+                                            password=account["password"],
                                             ent=_ent)
                 children[__client.info.name] = __client
 
         if _storeCredentials:
-            with open("config/config.generated.json", "w") as write_file:
-                json.dump(config, write_file, indent=2)
+            __storeConfig()
         log.info(f"Login done, found children : {list(children.keys())}")
         return children
+
+def __storeConfig():
+    with open("config/config.generated.json", "w") as write_file:
+        json.dump(config, write_file, indent=2)
+
+def __cron_login():
+    global error
+    if error < 5:
+        try:
+            for key in children:
+                client = children[key]
+                if client.logged_in:
+                    client.refresh()
+                    for account in config['accounts']:
+                        credentials = account['credential']
+                        if credentials['uuid'] == client.uuid:
+                            account['credential'] = __buildCredentials(client)
+            __storeConfig()
+        except CryptoError as ex:
+            error += 1
+            __login()
+            raise ex
+    else:
+        log.warning("Too many login error, skipping")
+
 
 if __name__ == '__main__':
     defaultConfig = {
@@ -506,7 +535,7 @@ if __name__ == '__main__':
 
     children = {}
     __login()
-    scheduler.add_job(__login, trigger="interval", seconds=300)
+    scheduler.add_job(__cron_login, trigger="interval", seconds=300)
     scheduler.start()
 
 app.run(host='0.0.0.0', port=port, debug=debug)
