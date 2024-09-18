@@ -15,6 +15,7 @@ from dateutil import rrule
 from flask import Flask, render_template, redirect, abort, jsonify, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from pronotepy import CryptoError
 from pronotepy import ent, ENTLoginError
 from readerwriterlock import rwlock
 
@@ -29,6 +30,7 @@ CONFIG_GENERATED_JSON = 'config/config.generated.json'
 
 scheduler = BackgroundScheduler()
 logging.config.fileConfig('logging.conf')
+logging.getLogger('apscheduler.executors.default').setLevel(logging.WARNING)
 
 app = Flask(__name__, static_url_path='/static')
 limiter = Limiter(
@@ -506,6 +508,28 @@ def __is_credential(client):
     return client.login_mode == 'token' or client.login_mode == 'qr_code'
 
 
+def __cron_refresh():
+    global error
+    if error < 5:
+        try:
+            for key in children:
+                client = children[key]
+                if client.logged_in:
+                    if client.session_check():
+                        if __is_credential(client):
+                            for account in config[ACCOUNTS]:
+                                credentials = account[CREDENTIAL]
+                                if credentials['uuid'] == client.uuid:
+                                    account[CREDENTIAL] = __build_credentials(client)
+                            __storeConfig()
+        except CryptoError as ex:
+            error += 1
+            __login()
+            raise ex
+    else:
+        log.warning("Too many login error, skipping")
+
+
 if __name__ == '__main__':
     defaultConfig = {
         'lessons': {'days': 7},
@@ -524,7 +548,11 @@ if __name__ == '__main__':
     port = os.getenv('PORT')
 
     children = {}
-    _seconds = 300
-    __login()
+    _seconds = 60
+    if __login():
+        log.info("Adding job to refresh client every " + str(_seconds) + 's')
+        scheduler.add_job(__cron_refresh, trigger="interval", seconds=_seconds)
+        scheduler.start()
+
 
 app.run(host='0.0.0.0', port=port, debug=debug)
