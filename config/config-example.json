@@ -7,6 +7,13 @@
       "cas": "",
       "child": "",
       "parent": true
+    }    ,
+    {
+      "prefix": "0693330v",
+      "login": "19956D9E78098...09867B13D4CDB5",
+      "jeton": "00E0FD695541A1F77A0F1C85722116AD1D1C91B116982C6799...1C53A29353FDB824A85D42CE5D199F673B652B5B7E0E012AFDC359DA94CA4D609A0ABED84B4E",
+      "pin": "1234",
+      "parent": true
     }
   ]
 }
