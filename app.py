@@ -516,6 +516,7 @@ def __cron_refresh():
                 client = children[key]
                 if client.logged_in:
                     if client.session_check():
+                        logging.info("Session expired, refreshed")
                         if __is_credential(client):
                             for account in config[ACCOUNTS]:
                                 credentials = account[CREDENTIAL]

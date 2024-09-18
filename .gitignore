@@ -1,5 +1,5 @@
 config/config.json
-config/config.generated.json
+config/config.*.json
 test.py
 .idea/
 
