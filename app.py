@@ -15,7 +15,6 @@ from dateutil import rrule
 from flask import Flask, render_template, redirect, abort, jsonify, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from pronotepy import CryptoError
 from pronotepy import ent, ENTLoginError, PronoteAPIError
 from readerwriterlock import rwlock
 
@@ -42,6 +41,7 @@ limiter = Limiter(
 
 rwlock = rwlock.RWLockFairD()
 error = 0
+force_login = False
 
 log = logging.getLogger("pronote-rest")
 
@@ -403,12 +403,15 @@ def __build_credentials(_client):
 @app.errorhandler(ENTLoginError)
 @app.errorhandler(PronoteAPIError)
 def login_error(ex):
+    global force_login
     log.error("Handling login error...")
     try:
         __login()
     except Exception as ex:
         log.warning("Unable to recover login")
         log.exception(ex)
+        force_login = True
+
     success = False
     response = {
         'success': success,
@@ -518,20 +521,26 @@ def __is_credential(client):
 
 def __cron_refresh():
     global error
-    if error < 5:
-        try:
-            for key in children:
-                client = children[key]
-                if client.logged_in:
-                    if client.session_check():
-                        logging.info("Session expired, refreshed")
-                        __login()
-                        break
-        except CryptoError as ex:
-            log.warning("Unable to login, trying again " + str(error))
-            error += 1
-    else:
-        log.warning("Too many login error, skipping")
+    global force_login
+    try:
+        if not force_login:
+            if error < 5:
+                for key in children:
+                    client = children[key]
+                    if client.logged_in:
+                        if client.session_check():
+                            logging.info("Session expired, refreshed")
+                            force_login = True
+                            break
+            else:
+                log.warning("Too many login error, skipping")
+        if force_login:
+            force_login = False
+            __login()
+    except Exception as ex:
+        log.warning("Unable to login, trying again " + str(error))
+        log.exception(ex)
+        error += 1
 
 
 if __name__ == '__main__':
