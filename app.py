@@ -19,8 +19,6 @@ from flask_limiter.util import get_remote_address
 from pronotepy import ent, ENTLoginError, PronoteAPIError
 from readerwriterlock import rwlock
 
-import ent
-
 ACCOUNTS = 'accounts'
 
 CREDENTIAL = 'credential'
@@ -508,7 +506,7 @@ def __login():
 def __build_account_for_log(account):
     tmp = copy.deepcopy(account)
     if tmp.get('password') is not None:
-        tmp['password'] = '<hidden>>'
+        tmp['password'] = '<hidden>'
     if tmp.get('jeton') is not None:
         tmp['jeton'] = '<hidden>'
     if tmp.get('credential') is not None:
