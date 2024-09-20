@@ -16,7 +16,7 @@ from flask import Flask, render_template, redirect, abort, jsonify, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from pronotepy import CryptoError
-from pronotepy import ent, ENTLoginError
+from pronotepy import ent, ENTLoginError, PronoteAPIError
 from readerwriterlock import rwlock
 
 import ent
@@ -401,15 +401,20 @@ def __build_credentials(_client):
 
 
 @app.errorhandler(ENTLoginError)
-def internal_error(error):
+@app.errorhandler(PronoteAPIError)
+def internal_error(ex):
     log.error("Handling login error...")
-    __login()
+    try:
+        __login()
+    except Exception as ex:
+        log.warning("Unable to recover login")
+        log.exception(ex)
     success = False
     response = {
         'success': success,
         'error': {
-            'type': error.__class__.__name__,
-            'message': error.args[0]
+            'type': ex.__class__.__name__,
+            'message': ex.args[0]
         }
     }
     return jsonify(response), 401
@@ -443,6 +448,7 @@ def internal_error(error):
 
 
 def __login():
+    global error
     with rwlock.gen_wlock():
         log.info("Login process")
         _storeCredentials = False
@@ -496,10 +502,12 @@ def __login():
         if _storeCredentials:
             __storeConfig()
         log.info(f"Login done, found children : {list(children.keys())}")
+        error = 0
         return _storeCredentials
 
 
 def __storeConfig():
+    log.info("Storing config : " + str(config))
     with open(CONFIG_GENERATED_JSON, "w") as write_file:
         json.dump(config, write_file, indent=2)
 
@@ -517,16 +525,11 @@ def __cron_refresh():
                 if client.logged_in:
                     if client.session_check():
                         logging.info("Session expired, refreshed")
-                        if __is_credential(client):
-                            for account in config[ACCOUNTS]:
-                                credentials = account[CREDENTIAL]
-                                if credentials['uuid'] == client.uuid:
-                                    account[CREDENTIAL] = __build_credentials(client)
-                            __storeConfig()
+                        __login()
+                        break
         except CryptoError as ex:
+            log.warning("Unable to login, trying again " + str(error))
             error += 1
-            __login()
-            raise ex
     else:
         log.warning("Too many login error, skipping")
 
@@ -554,6 +557,5 @@ if __name__ == '__main__':
         log.info("Adding job to refresh client every " + str(_seconds) + 's')
         scheduler.add_job(__cron_refresh, trigger="interval", seconds=_seconds)
         scheduler.start()
-
 
 app.run(host='0.0.0.0', port=port, debug=debug)
