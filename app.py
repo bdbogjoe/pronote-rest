@@ -402,7 +402,7 @@ def __build_credentials(_client):
 
 @app.errorhandler(ENTLoginError)
 @app.errorhandler(PronoteAPIError)
-def internal_error(ex):
+def login_error(ex):
     log.error("Handling login error...")
     try:
         __login()
