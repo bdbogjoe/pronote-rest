@@ -529,7 +529,13 @@ def __cron_refresh():
                     client = children[key]
                     if client.logged_in:
                         if client.session_check():
-                            logging.info("Session expired, refreshed")
+                            logging.info("Session expired, refreshed, storing credentials")
+                            if __is_credential(client):
+                                for account in config[ACCOUNTS]:
+                                    credentials = account[CREDENTIAL]
+                                    if credentials['uuid'] == client.uuid:
+                                        account[CREDENTIAL] = __build_credentials(client)
+                                __storeConfig()
                             force_login = True
                             break
             else:
