@@ -5,6 +5,7 @@ import logging.config
 import os
 import sys
 import uuid
+import copy
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
@@ -457,12 +458,7 @@ def __login():
         _storeCredentials = False
         for account in config[ACCOUNTS]:
             _ent = ''
-            tmp = account.copy()
-            if tmp.get('password') is not None:
-                tmp['password'] = 'xxxxx'
-            if tmp.get('jeton') is not None:
-                tmp['jeton'] = 'xxxxx'
-            log.info("Processing account : " + json.dumps(tmp))
+            log.info("Processing account : " + json.dumps(__build_account_for_log(account)))
             if 'cas' in account:
                 cas = account['cas']
                 if cas is not None:
@@ -509,8 +505,22 @@ def __login():
         return _storeCredentials
 
 
+def __build_account_for_log(account):
+    tmp = copy.deepcopy(account)
+    if tmp.get('password') is not None:
+        tmp['password'] = '<hidden>>'
+    if tmp.get('jeton') is not None:
+        tmp['jeton'] = '<hidden>'
+    if tmp.get('credential') is not None:
+        cred = tmp.get('credential')
+        if cred.get('password') is not None:
+            cred['password'] = '<hidden>'
+
+    return tmp
+
+
 def __storeConfig():
-    log.info("Storing config : " + str(config))
+    log.info("Storing config")
     with open(CONFIG_GENERATED_JSON, "w") as write_file:
         json.dump(config, write_file, indent=2)
 
