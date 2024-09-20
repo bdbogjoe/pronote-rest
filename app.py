@@ -407,9 +407,9 @@ def login_error(ex):
     log.error("Handling login error...")
     try:
         __login()
-    except Exception as ex:
+    except Exception as _ex:
         log.warning("Unable to recover login")
-        log.exception(ex)
+        log.exception(_ex)
         force_login = True
 
     success = False
