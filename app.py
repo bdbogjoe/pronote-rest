@@ -4,21 +4,31 @@ import json
 import logging.config
 import os
 import sys
-
-from ent import vth_ecollege_haute_garonne_edu
+import uuid
+import copy
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 import pronotepy
+from apscheduler.schedulers.background import BackgroundScheduler
 from dateutil import rrule
 from flask import Flask, render_template, redirect, abort, jsonify, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from pronotepy import ent, ENTLoginError
+from pronotepy import ent, ENTLoginError, PronoteAPIError
 from readerwriterlock import rwlock
-from datetime import datetime
-from datetime import date
-from datetime import timedelta
 
+ACCOUNTS = 'accounts'
+
+CREDENTIAL = 'credential'
+
+CONFIG_CONFIG_JSON = 'config/config.json'
+CONFIG_GENERATED_JSON = 'config/config.generated.json'
+
+scheduler = BackgroundScheduler()
 logging.config.fileConfig('logging.conf')
+logging.getLogger('apscheduler.executors.default').setLevel(logging.WARNING)
 
 app = Flask(__name__, static_url_path='/static')
 limiter = Limiter(
@@ -29,6 +39,8 @@ limiter = Limiter(
 )
 
 rwlock = rwlock.RWLockFairD()
+error = 0
+force_login = False
 
 log = logging.getLogger("pronote-rest")
 
@@ -93,6 +105,7 @@ def information_and_surveys(type=None, child=None):
         log.debug(f"Loaded information_and_surveys {type} for {child} : {out}")
         return out
 
+
 @app.route('/menus')
 @app.route('/menus/<child>')
 def menus(child=None):
@@ -110,7 +123,6 @@ def menus(child=None):
                     abort(500)
         log.debug(f"Loaded menus for {child} : {out}")
         return out
-
 
 
 @app.route('/discussions')
@@ -346,26 +358,65 @@ def __serialize(data):
                     return data
 
 
-def __createClient(_url, _account, _child, _ent):
-    out = pronotepy.ParentClient(_url,
-                                 username=_account['username'],
-                                 password=_account['password'],
-                                 ent=_ent)
+def __create_client(_url, _account, _child, _ent):
+    if _account.get('username') is not None:
+        out = pronotepy.ParentClient(_url,
+                                     username=_account['username'],
+                                     password=_account['password'],
+                                     ent=_ent)
+    elif _account.get('login') is not None or _account.get(CREDENTIAL) is not None:
+        credentials = _account.get(CREDENTIAL)
+        if credentials is None:
+            data = {
+                'url': _url,
+                'login': _account['login'],
+                'jeton': _account['jeton']
+            }
+            out = pronotepy.ParentClient.qrcode_login(data, _account['pin'], str(uuid.uuid4()))
+            credentials = __build_credentials(out)
+        out = pronotepy.ParentClient.token_login(credentials['url'], credentials['username'], credentials['password'], credentials['uuid'])
+        _account[CREDENTIAL] = __build_credentials(out)
+        if _account.get('login') is not None:
+            # Remove values
+            del _account['login']
+            del _account['jeton']
+            del _account['pin']
+
+    else:
+        raise Exception("Missing auth info")
+
     if _child is not None and _child != '':
         out.set_child(_child)
     return out
 
 
+def __build_credentials(_client):
+    return {
+        "url": _client.pronote_url,
+        "username": _client.username,
+        "password": _client.password,
+        "uuid": _client.uuid,
+    }
+
+
 @app.errorhandler(ENTLoginError)
-def internal_error(error):
+@app.errorhandler(PronoteAPIError)
+def login_error(ex):
+    global force_login
     log.error("Handling login error...")
-    __login()
+    try:
+        __login()
+    except Exception as _ex:
+        log.warning("Unable to recover login")
+        log.exception(_ex)
+        force_login = True
+
     success = False
     response = {
         'success': success,
         'error': {
-            'type': error.__class__.__name__,
-            'message': error.args[0]
+            'type': ex.__class__.__name__,
+            'message': ex.args[0]
         }
     }
     return jsonify(response), 401
@@ -377,7 +428,7 @@ def internal_error(error):
     log.exception(error)
     status_code = 500
     description = ""
-    message=""
+    message = ""
     if hasattr(error, 'name'):
         message = error.name
     if hasattr(error, 'code'):
@@ -399,13 +450,13 @@ def internal_error(error):
 
 
 def __login():
+    global error
     with rwlock.gen_wlock():
         log.info("Login process")
-        for account in config['accounts']:
+        _storeCredentials = False
+        for account in config[ACCOUNTS]:
             _ent = ''
-            tmp = account.copy()
-            tmp['password'] = 'xxxxx'
-            log.info("Processing account : " + json.dumps(tmp))
+            log.info("Processing account : " + json.dumps(__build_account_for_log(account)))
             if 'cas' in account:
                 cas = account['cas']
                 if cas is not None:
@@ -429,22 +480,81 @@ def __login():
                 else:
                     child = ''
 
-                __client = __createClient(url, account, child, _ent)
+                __client = __create_client(url, account, child, _ent)
                 children[__client.children[0].name] = __client
-                client = __client
+                if __is_credential(__client):
+                    _storeCredentials = True
                 if len(__client.children) > 1:
                     for child in __client.children:
                         if child.name != __client.children[0].name:
                             # Need to create new client
-                            children[child.name] = __createClient(url, account, child.name, _ent)
+                            children[child.name] = __create_client(url, account, child.name, _ent)
             else:
                 __client = pronotepy.Client(url,
-                                            username=account['username'],
-                                            password=account['password'],
+                                            username=account["username"],
+                                            password=account["password"],
                                             ent=_ent)
                 children[__client.info.name] = __client
+
+        if _storeCredentials:
+            __storeConfig()
         log.info(f"Login done, found children : {list(children.keys())}")
-        return children
+        error = 0
+        return _storeCredentials
+
+
+def __build_account_for_log(account):
+    tmp = copy.deepcopy(account)
+    if tmp.get('password') is not None:
+        tmp['password'] = '<hidden>'
+    if tmp.get('jeton') is not None:
+        tmp['jeton'] = '<hidden>'
+    if tmp.get('credential') is not None:
+        cred = tmp.get('credential')
+        if cred.get('password') is not None:
+            cred['password'] = '<hidden>'
+
+    return tmp
+
+
+def __storeConfig():
+    log.info("Storing config")
+    with open(CONFIG_GENERATED_JSON, "w") as write_file:
+        json.dump(config, write_file, indent=2)
+
+
+def __is_credential(client):
+    return client.login_mode == 'token' or client.login_mode == 'qr_code'
+
+
+def __cron_refresh():
+    global error
+    global force_login
+    try:
+        if not force_login:
+            if error < 5:
+                for key in children:
+                    client = children[key]
+                    if client.logged_in:
+                        if client.session_check():
+                            logging.info("Session expired, refreshed, storing credentials")
+                            if __is_credential(client):
+                                for account in config[ACCOUNTS]:
+                                    credentials = account[CREDENTIAL]
+                                    if credentials['uuid'] == client.uuid:
+                                        account[CREDENTIAL] = __build_credentials(client)
+                                __storeConfig()
+                            force_login = True
+                            break
+            else:
+                log.warning("Too many login error, skipping")
+        if force_login:
+            force_login = False
+            __login()
+    except Exception as ex:
+        log.warning("Unable to login, trying again " + str(error))
+        log.exception(ex)
+        error += 1
 
 
 if __name__ == '__main__':
@@ -453,14 +563,22 @@ if __name__ == '__main__':
         'homework': {'days': 7},
         "information_and_surveys": {'days': 7},
     }
-    with open('config/config.json') as f:
-        config = json.load(f)
+    if os.path.isfile(CONFIG_GENERATED_JSON):
+        with open(CONFIG_GENERATED_JSON) as f:
+            config = json.load(f)
+    else:
+        with open(CONFIG_CONFIG_JSON) as f:
+            config = json.load(f)
 
     config = defaultConfig | config
     debug = os.getenv('DEBUG') == 'true'
     port = os.getenv('PORT')
 
     children = {}
-    __login()
+    _seconds = 60
+    if __login():
+        log.info("Adding job to refresh client every " + str(_seconds) + 's')
+        scheduler.add_job(__cron_refresh, trigger="interval", seconds=_seconds)
+        scheduler.start()
 
 app.run(host='0.0.0.0', port=port, debug=debug)

@@ -1,4 +1,7 @@
 config/config.json
+config/config.*.json
+test.py
+.idea/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
