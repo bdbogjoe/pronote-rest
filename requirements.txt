@@ -1,6 +1,6 @@
 flask
 python-dateutil
-pronotepy==2.14.1
+pronotepy==2.14.2
 readerwriterlock
 Flask-Limiter
 APScheduler
