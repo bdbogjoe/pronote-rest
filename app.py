@@ -69,7 +69,7 @@ def lessons(child=None):
         for key in children:
             if child is None or child in key:
                 client = children[key]
-                if client.logged_in:
+                if __is_logged_in(client):
                     out[key] = __serialize(sorted(client.lessons(start, end), key=get_sort))
                 else:
                     abort(500)
@@ -97,7 +97,7 @@ def information_and_surveys(type=None, child=None):
         for key in children:
             if child is None or child in key:
                 client = children[key]
-                if client.logged_in:
+                if __is_logged_in(client):
                     out[key] = __serialize(
                         sorted(client.information_and_surveys(start, end, only_unread), key=get_sort))
                 else:
@@ -117,7 +117,7 @@ def menus(child=None):
         for key in children:
             if child is None or child in key:
                 client = children[key]
-                if client.logged_in:
+                if __is_logged_in(client):
                     out[key] = __serialize(sorted(client.menus(start, end), key=get_sort))
                 else:
                     abort(500)
@@ -134,7 +134,7 @@ def discussions(child=None):
         for key in children:
             if child is None or child in key:
                 client = children[key]
-                if client.logged_in:
+                if __is_logged_in(client):
                     out[key] = __serialize(client.discussions())
                 else:
                     abort(500)
@@ -179,7 +179,7 @@ def homework(type=None, child=None):
         for key in children:
             client = children[key]
             if child is None or child in key:
-                if client.logged_in:
+                if __is_logged_in(client):
                     work = sorted(client.homework(start, end), key=get_sort)
 
                     if todo:
@@ -201,7 +201,7 @@ def period(child=None):
             if child is None or child in key:
                 client = children[key]
                 current_period = __currentPeriod(client)
-                if client.logged_in:
+                if __is_logged_in(client):
                     out[key] = __buildPeriod(current_period)
                 else:
                     abort(500)
@@ -229,7 +229,7 @@ def periods(child=None):
         for key in children:
             if child is None or child in key:
                 client = children[key]
-                if client.logged_in:
+                if __is_logged_in(client):
                     data = {}
                     out[key] = data
                     for p in __periods(client):
@@ -301,7 +301,7 @@ def data_period(type, child=None):
             for key in children:
                 if child is None or child in key:
                     client = children[key]
-                    if client.logged_in:
+                    if __is_logged_in(client):
                         data = None
                         cpt = 1
                         for p in __periods(client):
@@ -390,6 +390,9 @@ def __create_client(_url, _account, _child, _ent):
     return out
 
 
+def __is_logged_in(_client):
+    return _client.logged_in
+
 def __build_credentials(_client):
     return {
         "url": _client.pronote_url,
@@ -404,6 +407,7 @@ def __build_credentials(_client):
 def login_error(ex):
     global force_login
     log.error("Handling login error...")
+    log.exception(ex)
     try:
         __login()
     except Exception as _ex:
@@ -530,11 +534,14 @@ def __is_credential(client):
 def __cron_refresh():
     global error
     global force_login
+    logging.debug("Cron force_login: "+str(force_login))
     try:
+        ''' client.session_check broke the connexion when login via QR code 
         if not force_login:
             if error < 5:
                 for key in children:
                     client = children[key]
+                    logging.debug("isLoggedIn :"+str(client.logged_in))
                     if client.logged_in:
                         if client.session_check():
                             logging.info("Session expired, refreshed, storing credentials")
@@ -548,6 +555,7 @@ def __cron_refresh():
                             break
             else:
                 log.warning("Too many login error, skipping")
+        '''
         if force_login:
             force_login = False
             __login()
