@@ -536,7 +536,6 @@ def __cron_refresh():
     global force_login
     logging.debug("Cron force_login: "+str(force_login))
     try:
-        ''' client.session_check broke the connexion when login via QR code 
         if not force_login:
             if error < 5:
                 for key in children:
@@ -551,11 +550,10 @@ def __cron_refresh():
                                     if credentials['uuid'] == client.uuid:
                                         account[CREDENTIAL] = __build_credentials(client)
                                 __storeConfig()
-                            force_login = True
                             break
+                        force_login = True
             else:
                 log.warning("Too many login error, skipping")
-        '''
         if force_login:
             force_login = False
             __login()
