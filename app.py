@@ -578,7 +578,7 @@ if __name__ == '__main__':
 
     children = {}
     _seconds = config.get('refresh_login')
-    if __login() and _seconds > 0:
+    if __login() and _seconds is not None:
         log.info("Adding job to refresh client every " + str(_seconds) + 's')
         scheduler.add_job(__cron_refresh, trigger="interval", seconds=_seconds)
         scheduler.start()
