@@ -1,11 +1,11 @@
 #!flask/bin/python
+import copy
 import datetime
 import json
 import logging.config
 import os
 import sys
 import uuid
-import copy
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
@@ -393,6 +393,7 @@ def __create_client(_url, _account, _child, _ent):
 def __is_logged_in(_client):
     return _client.logged_in
 
+
 def __build_credentials(_client):
     return _client.export_credentials()
 
@@ -529,13 +530,13 @@ def __is_credential(client):
 def __cron_refresh():
     global error
     global force_login
-    logging.debug("Cron force_login: "+str(force_login))
+    logging.debug("Cron force_login: " + str(force_login))
     try:
         if not force_login:
             if error < 5:
                 for key in children:
                     client = children[key]
-                    logging.debug("isLoggedIn :"+str(client.logged_in))
+                    logging.debug("isLoggedIn :" + str(client.logged_in))
                     if client.logged_in:
                         if client.session_check():
                             logging.info("Session expired, refreshed, storing credentials")
@@ -576,8 +577,8 @@ if __name__ == '__main__':
     port = os.getenv('PORT')
 
     children = {}
-    _seconds = 60
-    if __login():
+    _seconds = config.get('refresh_login')
+    if __login() and _seconds > 0:
         log.info("Adding job to refresh client every " + str(_seconds) + 's')
         scheduler.add_job(__cron_refresh, trigger="interval", seconds=_seconds)
         scheduler.start()
