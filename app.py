@@ -518,7 +518,7 @@ def __build_account_for_log(account):
 
 
 def __storeConfig():
-    log.info("Storing config")
+    log.info("Storing config : " + json.dump(config))
     with open(CONFIG_GENERATED_JSON, "w") as write_file:
         json.dump(config, write_file, indent=2)
 
