@@ -118,6 +118,7 @@ def login():
     return "OK"
 
 def __login_all():
+    log.info("Logging from educonnect")
     for account in config[ACCOUNTS]:
         __login_edu(account)
     __login()
@@ -541,6 +542,7 @@ def login_error(ex):
         log.warning("Unable to recover login")
         log.exception(_ex)
         force_login = True
+        __login_all()
 
     success = False
     response = {
