@@ -121,6 +121,7 @@ def __login_all():
     log.info("Logging from educonnect to get token for all accounts")
     for account in config[ACCOUNTS]:
         __login_edu(account)
+    __storeConfig()
     __login()
 
 def __login_edu(account):
