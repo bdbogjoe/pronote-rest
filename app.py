@@ -138,15 +138,17 @@ def __login_edu(account):
         log.info(f"Using url {url}")
         driver.get(url)
         labels = driver.find_elements(By.CLASS_NAME, "form__label")
-        if len(labels) == 1:
-            labels[0].click()
-        else:
+        if account.get('idp') is not None:
             for label in labels:
-                if account['idp'] in label.get_attribute("for"):
+                if account.get('idp') in label.get_attribute("for"):
                     label.find_element(By.XPATH, "./../../../..").find_element(By.TAG_NAME, "button").click()
                     label.click()
                     break
-
+        else:
+            for label in labels:
+                if label.text == "Elève ou parent":
+                    label.click()
+                    break
 
         driver.find_element(By.ID, "button-submit").click()
 
@@ -184,6 +186,8 @@ def __login_edu(account):
         tmp = load_xhr(driver, filter_url)
         account['login'] = tmp['donneesSec']['data']['login']
         account['jeton'] = tmp['donneesSec']['data']['jeton']
+        del account['credential']
+        log.info(f"account : {json.dumps(__build_account_for_log(account))}")
 
     finally:
         driver.quit()
