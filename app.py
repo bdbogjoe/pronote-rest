@@ -18,6 +18,13 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from pronotepy import ent, ENTLoginError, PronoteAPIError
 from readerwriterlock import rwlock
+from selenium import webdriver
+from selenium.common import TimeoutException
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+# import relevant selenium packages
+from selenium.webdriver.support.ui import WebDriverWait
 
 ACCOUNTS = 'accounts'
 
@@ -43,6 +50,132 @@ error = 0
 force_login = False
 
 log = logging.getLogger("pronote-rest")
+
+CHROMEDRIVER_DIR = os.getenv("CHROMEDRIVER_DIR")
+if CHROMEDRIVER_DIR is not None:
+    DRIVER_PATH = os.path.join(CHROMEDRIVER_DIR, "chromedriver")
+    log.info(f"Using chromedriver at {DRIVER_PATH}")
+    service = Service(executable_path=DRIVER_PATH)
+else:
+    service = None
+
+# set up headless option
+options = webdriver.ChromeOptions()
+options.add_argument('--headless')
+options.add_argument('--no-sandbox')
+options.add_argument('--allow-running-insecure-content')
+options.add_argument('--disable-blink-features=AutomationControlled')
+options.add_argument('--ignore-certificate-errors')
+options.add_experimental_option("excludeSwitches", ["enable-automation"])
+options.add_experimental_option('useAutomationExtension', False)
+options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+
+def load_xhr(driver, _filter):
+    # extract requests from logs
+    logs_raw = driver.get_log("performance")
+    logs = [json.loads(lr["message"])["message"] for lr in logs_raw]
+    output = None
+    for l in filter(log_filter, logs):
+        request_id = l["params"]["requestId"]
+        resp_url = l["params"]["response"]["url"]
+        if _filter(resp_url):
+            log.debug(f"load data from {resp_url}")
+            value = send(driver, "Network.getResponseBody", {"requestId": request_id})
+            if isinstance(value, dict):
+                value = json.loads(value['body'])
+                if output is None:
+                    output = value
+                else:
+                    if type(output) is dict:
+                        output = {**output, **value}
+            else:
+                log.warning(f"Unable to load response : {resp_url} : {value}")
+                raise Exception(f"Unable to load response : {resp_url}")
+    return output
+
+
+def log_filter(log_):
+    return (
+            log_["method"] == "Network.responseReceived" and "json" in log_["params"]["response"]["mimeType"]
+    )
+
+
+def send(driver, cmd, params={}):
+    resource = "/session/%s/chromium/send_command_and_get_result" % driver.session_id
+    if(hasattr(driver.command_executor, '_client_config')):
+        url = driver.command_executor._client_config.remote_server_addr + resource
+    else:
+        url = driver.command_executor._url + resource
+
+    body = json.dumps({'cmd': cmd, 'params': params})
+    response = driver.command_executor._request('POST', url, body)
+    return response.get('value')
+
+
+@app.route('/login')
+def login():
+    __login_all()
+    return "OK"
+
+def __login_all():
+    for account in config[ACCOUNTS]:
+        __login_edu(account)
+    __login()
+
+def __login_edu(account):
+    # initiate the Selenium driver
+    if service is not None:
+        driver = webdriver.Chrome(service=service, options=options)
+    else:
+        driver = webdriver.Chrome(options=options)
+    try:
+        mode = 'eleve'
+        if 'parent' in account:
+            if account['parent']:
+                mode = 'parent'
+        url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
+        log.debug(f"Using url {url}")
+        driver.get(url)
+        driver.find_element(By.CLASS_NAME, "form__label").click()
+        driver.find_element(By.ID, "button-submit").click()
+
+        wait = WebDriverWait(driver, 10)
+        try:
+            wait.until(EC.presence_of_element_located((By.ID, 'bouton_responsable')))
+        except TimeoutException:
+            pass
+        driver.save_screenshot('screenshot-1.png')
+        driver.find_element(By.ID, "bouton_responsable").click()
+        driver.save_screenshot('screenshot-2.png')
+
+        username = driver.find_element(By.ID, "username")
+        username.send_keys(account['username'])
+        password = driver.find_element(By.ID, "password")
+        password.send_keys(account['password'])
+        driver.find_element(By.ID, "bouton_valider").click()
+        try:
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ibe_iconebtn.ibe_actif')))
+        except TimeoutException:
+            pass
+        driver.save_screenshot('screenshot-3.png')
+        driver.find_element(By.CSS_SELECTOR, '.ibe_iconebtn.ibe_actif').click()
+        try:
+            wait.until(EC.presence_of_element_located((By.ID, 'id_128')))
+        except TimeoutException:
+            pass
+        driver.find_element(By.TAG_NAME, 'input').send_keys(account['pin'])
+        driver.find_element(By.TAG_NAME, 'button').click()
+        driver.save_screenshot('screenshot-4.png')
+
+        def filter_url(resp_url):
+            return "appelfonction" in resp_url
+
+        tmp = load_xhr(driver, filter_url)
+        account['login'] = tmp['donneesSec']['data']['login']
+        account['jeton'] = tmp['donneesSec']['data']['jeton']
+
+    finally:
+        driver.quit()
 
 
 @app.route('/')
@@ -359,12 +492,7 @@ def __serialize(data):
 
 
 def __create_client(_url, _account, _child, _ent):
-    if _account.get('username') is not None:
-        out = pronotepy.ParentClient(_url,
-                                     username=_account['username'],
-                                     password=_account['password'],
-                                     ent=_ent)
-    elif _account.get('login') is not None or _account.get(CREDENTIAL) is not None:
+    if _account.get('login') is not None or _account.get(CREDENTIAL) is not None:
         credentials = _account.get(CREDENTIAL)
         if credentials is None:
             data = {
@@ -380,8 +508,11 @@ def __create_client(_url, _account, _child, _ent):
             # Remove values
             del _account['login']
             del _account['jeton']
-            del _account['pin']
-
+    elif _account.get('username') is not None:
+        out = pronotepy.ParentClient(_url,
+                                     username=_account['username'],
+                                     password=_account['password'],
+                                     ent=_ent)
     else:
         raise Exception("Missing auth info")
 
@@ -518,7 +649,7 @@ def __build_account_for_log(account):
 
 
 def __storeConfig():
-    log.info("Storing config : " + json.dump(config))
+    log.info("Storing config")
     with open(CONFIG_GENERATED_JSON, "w") as write_file:
         json.dump(config, write_file, indent=2)
 
@@ -552,7 +683,7 @@ def __cron_refresh():
                 log.warning("Too many login error, skipping")
         if force_login:
             force_login = False
-            __login()
+            __login_all()
     except Exception as ex:
         log.warning("Unable to login, trying again " + str(error))
         log.exception(ex)
@@ -578,7 +709,7 @@ if __name__ == '__main__':
 
     children = {}
     _seconds = config.get('refresh_login')
-    if __login() and _seconds is not None:
+    if __login_all() and _seconds is not None:
         log.info("Adding job to refresh client every " + str(_seconds) + 's')
         scheduler.add_job(__cron_refresh, trigger="interval", seconds=_seconds)
         scheduler.start()

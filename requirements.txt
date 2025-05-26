@@ -4,3 +4,5 @@ pronotepy==2.14.3
 readerwriterlock
 Flask-Limiter
 APScheduler
+selenium
+webdriver_manager
