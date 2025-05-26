@@ -158,9 +158,9 @@ def __login_edu(account):
             wait.until(EC.presence_of_element_located((By.ID, 'bouton_responsable')))
         except TimeoutException:
             pass
-        driver.save_screenshot('screenshot-1.png')
+        driver.save_screenshot('screenshot/screenshot-1.png')
         driver.find_element(By.ID, "bouton_responsable").click()
-        driver.save_screenshot('screenshot-2.png')
+        driver.save_screenshot('screenshot/screenshot-2.png')
 
         username = driver.find_element(By.ID, "username")
         username.send_keys(account['username'])
@@ -171,7 +171,7 @@ def __login_edu(account):
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ibe_iconebtn.ibe_actif')))
         except TimeoutException:
             pass
-        driver.save_screenshot('screenshot-3.png')
+        driver.save_screenshot('screenshot/screenshot-3.png')
         driver.find_element(By.CSS_SELECTOR, '.ibe_iconebtn.ibe_actif').click()
         try:
             wait.until(EC.presence_of_element_located((By.ID, 'id_128')))
@@ -179,7 +179,7 @@ def __login_edu(account):
             pass
         driver.find_element(By.TAG_NAME, 'input').send_keys(account['pin'])
         driver.find_element(By.TAG_NAME, 'button').click()
-        driver.save_screenshot('screenshot-4.png')
+        driver.save_screenshot('screenshot/screenshot-4.png')
 
         def filter_url(resp_url):
             return "appelfonction" in resp_url
@@ -191,6 +191,7 @@ def __login_edu(account):
         log.info(f"account : {json.dumps(__build_account_for_log(account))}")
 
     finally:
+        driver.save_screenshot('screenshot/screenshot-end.png')
         driver.quit()
 
 

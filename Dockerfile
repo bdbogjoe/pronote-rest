@@ -37,7 +37,8 @@ RUN echo "Chrome: " && chrome --version
 
 
 RUN useradd  app
-RUN mkdir -p /home/app
+RUN mkdir -p /home/app/config
+RUN mkdir -p /home/app/screenshot
 RUN chown -R app:app /home/app
 
 USER app
