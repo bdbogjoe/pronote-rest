@@ -135,7 +135,7 @@ def __login_edu(account):
             if account['parent']:
                 mode = 'parent'
         url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
-        log.debug(f"Using url {url}")
+        log.info(f"Using url {url}")
         driver.get(url)
         driver.find_element(By.CLASS_NAME, "form__label").click()
         driver.find_element(By.ID, "button-submit").click()
