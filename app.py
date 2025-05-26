@@ -187,7 +187,8 @@ def __login_edu(account):
         tmp = load_xhr(driver, filter_url)
         account['login'] = tmp['donneesSec']['data']['login']
         account['jeton'] = tmp['donneesSec']['data']['jeton']
-        del account['credential']
+        if account.get('credential') is not None:
+            del account['credential']
         log.info(f"account : {json.dumps(__build_account_for_log(account))}")
 
     finally:
