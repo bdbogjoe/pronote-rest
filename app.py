@@ -137,7 +137,17 @@ def __login_edu(account):
         url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
         log.info(f"Using url {url}")
         driver.get(url)
-        driver.find_element(By.CLASS_NAME, "form__label").click()
+        labels = driver.find_elements(By.CLASS_NAME, "form__label")
+        if len(labels) == 1:
+            labels[0].click()
+        else:
+            for label in labels:
+                if account['idp'] in label.get_attribute("for"):
+                    label.find_element(By.XPATH, "./../../../..").find_element(By.TAG_NAME, "button").click()
+                    label.click()
+                    break
+
+
         driver.find_element(By.ID, "button-submit").click()
 
         wait = WebDriverWait(driver, 10)
