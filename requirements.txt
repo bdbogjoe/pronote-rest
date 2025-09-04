@@ -1,8 +1,7 @@
 flask
 python-dateutil
-pronotepy==2.14.3
+pronotepy==2.14.5
 readerwriterlock
 Flask-Limiter
 APScheduler
 selenium
-webdriver_manager

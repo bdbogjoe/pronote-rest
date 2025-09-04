@@ -19,7 +19,6 @@ from flask_limiter.util import get_remote_address
 from pronotepy import ent, ENTLoginError, PronoteAPIError
 from readerwriterlock import rwlock
 from selenium import webdriver
-from selenium.common import TimeoutException
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -70,6 +69,7 @@ options.add_experimental_option("excludeSwitches", ["enable-automation"])
 options.add_experimental_option('useAutomationExtension', False)
 options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
+
 def load_xhr(driver, _filter):
     # extract requests from logs
     logs_raw = driver.get_log("performance")
@@ -102,7 +102,7 @@ def log_filter(log_):
 
 def send(driver, cmd, params={}):
     resource = "/session/%s/chromium/send_command_and_get_result" % driver.session_id
-    if(hasattr(driver.command_executor, '_client_config')):
+    if (hasattr(driver.command_executor, '_client_config')):
         url = driver.command_executor._client_config.remote_server_addr + resource
     else:
         url = driver.command_executor._url + resource
@@ -117,12 +117,14 @@ def login():
     __login_all()
     return "OK"
 
+
 def __login_all():
     log.info("Logging from educonnect to get token for all accounts")
     for account in config[ACCOUNTS]:
         __login_edu(account)
     __storeConfig()
     __login()
+
 
 def __login_edu(account):
     # initiate the Selenium driver
@@ -154,46 +156,56 @@ def __login_edu(account):
         driver.find_element(By.ID, "button-submit").click()
 
         wait = WebDriverWait(driver, 10)
-        try:
-            wait.until(EC.presence_of_element_located((By.ID, 'bouton_responsable')))
-        except TimeoutException:
-            pass
+
+        wait.until(EC.presence_of_element_located((By.ID, 'bouton_responsable')))
         driver.save_screenshot('screenshot/screenshot-1.png')
         driver.find_element(By.ID, "bouton_responsable").click()
         driver.save_screenshot('screenshot/screenshot-2.png')
 
+        # login/password
         username = driver.find_element(By.ID, "username")
         username.send_keys(account['username'])
         password = driver.find_element(By.ID, "password")
         password.send_keys(account['password'])
         driver.find_element(By.ID, "bouton_valider").click()
-        try:
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ibe_iconebtn.ibe_actif')))
-        except TimeoutException:
-            pass
+
+        # click on QR code
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ibe_iconebtn.ibe_actif')))
         driver.save_screenshot('screenshot/screenshot-3.png')
         driver.find_element(By.CSS_SELECTOR, '.ibe_iconebtn.ibe_actif').click()
-        try:
-            wait.until(EC.presence_of_element_located((By.ID, 'id_128')))
-        except TimeoutException:
-            pass
-        driver.find_element(By.TAG_NAME, 'input').send_keys(account['pin'])
+
+        # fill pin
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input[type=\'password\']')))
+        driver.find_element(By.CSS_SELECTOR, 'input[type=\'password\']').send_keys(account['pin'])
         driver.find_element(By.TAG_NAME, 'button').click()
         driver.save_screenshot('screenshot/screenshot-4.png')
 
         def filter_url(resp_url):
             return "appelfonction" in resp_url
 
+        # get response from XHR
         tmp = load_xhr(driver, filter_url)
-        account['login'] = tmp['donneesSec']['data']['login']
-        account['jeton'] = tmp['donneesSec']['data']['jeton']
-        if account.get('credential') is not None:
-            del account['credential']
-        log.info(f"account : {json.dumps(__build_account_for_log(account))}")
+        donneeSec = tmp.get('dataSec')
+        success = False
+        if donneeSec is not None:
+            data = donneeSec.get('data')
+            if data is not None:
+                login = data.get('login')
+                if login is not None:
+                    account['login'] = data['login']
+                    account['jeton'] = data['jeton']
+                    if account.get('credential') is not None:
+                        del account['credential']
+                    success = True
+
+        if success:
+            log.info(f"login successful for : {json.dumps(__build_account_for_log(account))}")
+        else:
+            log.error(f"unable to login for : {json.dumps(__build_account_for_log(account))}")
 
     finally:
         driver.save_screenshot('screenshot/screenshot-end.png')
-        driver.quit()
+    driver.quit()
 
 
 @app.route('/')
