@@ -178,7 +178,7 @@ def __login_edu(account):
         try:
             confirmText = "Confirmation de l'identité"
             wait.until(EC.presence_of_element_located((By.XPATH, f'//*[contains(normalize-space(.), "{confirmText}")]')))
-            log.info(f"*************** verification needed ...")
+            log.info(f"identity verification needed ...")
             birthday = driver.find_element(By.ID, "jour")
             birthday.send_keys(account['birthday_day'])
             birthday = driver.find_element(By.ID, "mois")
