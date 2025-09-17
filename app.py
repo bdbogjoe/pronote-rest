@@ -24,6 +24,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 # import relevant selenium packages
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
+
 
 ACCOUNTS = 'accounts'
 
@@ -140,6 +142,10 @@ def __login_edu(account):
         url = 'https://' + account['prefix'] + '.index-education.net/pronote/' + mode + '.html'
         log.info(f"Using url {url}")
         driver.get(url)
+
+        wait = WebDriverWait(driver, 10)
+
+        wait.until(EC.presence_of_element_located((By.ID, 'button-submit')))
         labels = driver.find_elements(By.CLASS_NAME, "form__label")
         if account.get('idp') is not None:
             for label in labels:
@@ -155,19 +161,34 @@ def __login_edu(account):
 
         driver.find_element(By.ID, "button-submit").click()
 
-        wait = WebDriverWait(driver, 10)
-
+        driver.save_screenshot('screenshot/screenshot-0.png')
         wait.until(EC.presence_of_element_located((By.ID, 'bouton_responsable')))
         driver.save_screenshot('screenshot/screenshot-1.png')
         driver.find_element(By.ID, "bouton_responsable").click()
-        driver.save_screenshot('screenshot/screenshot-2.png')
 
         # login/password
         username = driver.find_element(By.ID, "username")
         username.send_keys(account['username'])
         password = driver.find_element(By.ID, "password")
         password.send_keys(account['password'])
+        driver.save_screenshot('screenshot/screenshot-2.png')
         driver.find_element(By.ID, "bouton_valider").click()
+
+        # Add birthday if confirmation is required
+        try:
+            confirmText = "Confirmation de l'identité"
+            wait.until(EC.presence_of_element_located((By.XPATH, f'//*[contains(normalize-space(.), "{confirmText}")]')))
+            log.info(f"*************** verification needed ...")
+            birthday = driver.find_element(By.ID, "jour")
+            birthday.send_keys(account['birthday_day'])
+            birthday = driver.find_element(By.ID, "mois")
+            birthday.send_keys(account['birthday_month'])
+            birthday = driver.find_element(By.ID, "annee")
+            birthday.send_keys(account['birthday_year'])
+            driver.save_screenshot('screenshot/screenshot-confirmation.png')
+            driver.find_element(By.ID, "submit-button").click()
+        except TimeoutException:
+            pass
 
         # click on QR code
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '.ibe_iconebtn.ibe_actif')))
