@@ -580,6 +580,7 @@ def __build_credentials(_client):
     return _client.export_credentials()
 
 
+@app.errorhandler(KeyError)
 @app.errorhandler(ENTLoginError)
 @app.errorhandler(PronoteAPIError)
 def login_error(ex):
