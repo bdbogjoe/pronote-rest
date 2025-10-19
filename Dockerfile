@@ -4,8 +4,11 @@ FROM python:3.12-slim-bullseye
 RUN apt-get update
 RUN apt-get install -y wget gnupg curl jq unzip
 
+RUN apt-get install --no-install-recommends -y chromium chromium-driver
 
-RUN apt-get install -y chromium chromium-driver
+RUN apt-get clean
+RUN rm -rf /var/lib/apt/lists
+RUN rm -rf /var/cache/apt/archives
 
 RUN useradd  app
 RUN mkdir -p /home/app/config
