@@ -3,7 +3,7 @@ FROM python:3.13-slim-bullseye
 
 RUN apt-get update
 
-RUN apt-get install --no-install-recommends -y chromium chromium-driver
+RUN apt-get install --no-install-recommends -y chromium chromium-driver gcc
 
 RUN apt-get clean
 RUN rm -rf /var/lib/apt/lists
