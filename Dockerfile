@@ -1,8 +1,7 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim-bullseye
+FROM python:3.13-slim-bullseye
 
 RUN apt-get update
-RUN apt-get install -y wget gnupg curl jq unzip
 
 RUN apt-get install --no-install-recommends -y chromium chromium-driver
 
