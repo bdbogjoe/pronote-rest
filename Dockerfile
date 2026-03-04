@@ -29,6 +29,9 @@ RUN npm run build
 # Remove dev dependencies after build
 RUN npm prune --omit=dev
 
+# Copy static assets
+COPY --chown=node:node templates ./templates
+COPY --chown=node:node static ./static
 
 ENTRYPOINT ["node"]
 CMD ["dist/index.js"]
