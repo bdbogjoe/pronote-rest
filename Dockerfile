@@ -12,20 +12,18 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-RUN useradd app
-RUN mkdir -p /home/app/config /home/app/screenshot
-RUN chown -R app:app /home/app
+RUN mkdir -p /home/node/config /home/node/screenshot && chown -R node:node /home/node
 
-USER app
-WORKDIR /home/app
+USER node
+WORKDIR /home/node
 
 # Install all dependencies (including dev) for building
-COPY --chown=app:app package*.json ./
+COPY --chown=node:node package*.json ./
 RUN npm ci
 
 # Build TypeScript
-COPY --chown=app:app tsconfig.json ./
-COPY --chown=app:app src ./src
+COPY --chown=node:node tsconfig.json ./
+COPY --chown=node:node src ./src
 RUN npm run build
 
 # Remove dev dependencies after build

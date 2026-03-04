@@ -7,4 +7,5 @@ services:
     ports:
       - 5000:5000
     volumes:
-      - ./config:/home/app/config
+      - ./config:/home/node/config
+      - ./screenshot:/home/node/screenshot
