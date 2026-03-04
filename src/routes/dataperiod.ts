@@ -10,6 +10,43 @@ import { triggerReloginIfStale } from "../utils/session";
 
 const router = Router();
 
+const GRADE_KIND_STRINGS: Record<number, string> = {
+  1: "Absent",
+  2: "Dispense",
+  3: "NonNote",
+  4: "Inapte",
+  5: "NonRendu",
+  6: "AbsentZero",
+  7: "NonRenduZero",
+  8: "Felicitations",
+};
+
+function gradeValueToString(gv: pronote.GradeValue | undefined): string | null {
+  if (!gv) return null;
+  if (gv.kind !== 0) return GRADE_KIND_STRINGS[gv.kind] ?? null;
+  return Number.isNaN(gv.points) ? null : String(gv.points);
+}
+
+function toCompatGrade(grade: pronote.Grade, periodName: string): Record<string, unknown> {
+  return {
+    id: grade.id,
+    grade: gradeValueToString(grade.value),
+    out_of: gradeValueToString(grade.outOf),
+    default_out_of: gradeValueToString(grade.defaultOutOf),
+    date: grade.date,
+    subject: grade.subject,
+    period: periodName,
+    average: gradeValueToString(grade.average),
+    max: gradeValueToString(grade.max),
+    min: gradeValueToString(grade.min),
+    coefficient: String(grade.coefficient),
+    comment: grade.comment,
+    is_bonus: grade.isBonus,
+    is_optionnal: grade.isOptional,
+    is_out_of_20: grade.isOutOf20,
+  };
+}
+
 // Map a URL type to the pawnote TabLocation used for period listing
 function tabForType(type: string): pronote.TabLocation | undefined {
   switch (type) {
@@ -63,7 +100,7 @@ async function fetchForPeriod(
   switch (type) {
     case "grades": {
       const overview = await pronote.gradesOverview(session, period);
-      return { kind: "list", data: overview.grades };
+      return { kind: "list", data: overview.grades.map((g) => toCompatGrade(g, period.name)) };
     }
     case "evaluations": {
       const evals = await pronote.evaluations(session, period);
