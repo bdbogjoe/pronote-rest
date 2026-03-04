@@ -2,8 +2,8 @@ import { Router, Request, Response, NextFunction } from "express";
 import * as pronote from "@niicojs/pawnote";
 import { children } from "../state";
 import { serialize } from "../utils/serialize";
-import { hasTab } from "../utils/tabs";
 import { logger } from "../logger";
+import { triggerReloginIfStale } from "../utils/session";
 
 const router = Router();
 
@@ -15,13 +15,19 @@ async function getMenus(req: Request, res: Response, next: NextFunction): Promis
 
     for (const [key, session] of children) {
       if (child !== undefined && !key.includes(child)) continue;
-      if (!hasTab(session, pronote.TabLocation.Menus)) {
-        out[key] = [];
-        continue;
-      }
 
-      const weekMenu = await pronote.menus(session, new Date());
-      out[key] = serialize(weekMenu.days);
+      try {
+        const weekMenu = await pronote.menus(session, new Date());
+        out[key] = serialize(weekMenu.days);
+      } catch (err) {
+        if (err instanceof pronote.AccessDeniedError || err instanceof pronote.SessionExpiredError) {
+          logger.warn(`Menus access denied for ${key}: ${err}`);
+          triggerReloginIfStale();
+          out[key] = [];
+        } else {
+          throw err;
+        }
+      }
     }
 
     logger.debug(`Loaded menus for ${child ?? "all"}`);

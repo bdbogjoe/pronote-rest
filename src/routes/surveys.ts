@@ -4,8 +4,8 @@ import { config } from "../config";
 import { children } from "../state";
 import { serialize } from "../utils/serialize";
 import { sortByField } from "../utils/sort";
-import { hasTab } from "../utils/tabs";
 import { logger } from "../logger";
+import { triggerReloginIfStale } from "../utils/session";
 
 const router = Router();
 
@@ -28,31 +28,36 @@ async function getSurveys(req: Request, res: Response, next: NextFunction): Prom
 
     for (const [key, session] of children) {
       if (child !== undefined && !key.includes(child)) continue;
-      if (!hasTab(session, pronote.TabLocation.News)) {
-        out[key] = [];
-        continue;
-      }
+      try {
+        const newsResult = await pronote.news(session);
+        let items: unknown[] = [...newsResult.items];
 
-      const newsResult = await pronote.news(session);
-      let items: unknown[] = [...newsResult.items];
-
-      // Filter by date (within configured days)
-      items = items.filter((item) => {
-        const obj = item as Record<string, unknown>;
-        const d = obj.creationDate ?? obj.startDate;
-        if (d instanceof Date) return d >= cutoff;
-        if (typeof d === "string") return new Date(d) >= cutoff;
-        return true;
-      });
-
-      if (onlyUnread) {
+        // Filter by date (within configured days)
         items = items.filter((item) => {
           const obj = item as Record<string, unknown>;
-          return obj.read === false;
+          const d = obj.creationDate ?? obj.startDate;
+          if (d instanceof Date) return d >= cutoff;
+          if (typeof d === "string") return new Date(d) >= cutoff;
+          return true;
         });
-      }
 
-      out[key] = serialize(sortByField(items));
+        if (onlyUnread) {
+          items = items.filter((item) => {
+            const obj = item as Record<string, unknown>;
+            return obj.read === false;
+          });
+        }
+
+        out[key] = serialize(sortByField(items));
+      } catch (err) {
+        if (err instanceof pronote.AccessDeniedError || err instanceof pronote.SessionExpiredError) {
+          logger.warn(`Surveys access denied for ${key}: ${err}`);
+          triggerReloginIfStale();
+          out[key] = [];
+        } else {
+          throw err;
+        }
+      }
     }
 
     logger.debug(`Loaded information_and_surveys for ${child ?? "all"}`);

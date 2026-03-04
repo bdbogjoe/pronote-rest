@@ -4,8 +4,8 @@ import { config } from "../config";
 import { children } from "../state";
 import { serialize } from "../utils/serialize";
 import { sortByField } from "../utils/sort";
-import { hasTab } from "../utils/tabs";
 import { logger } from "../logger";
+import { triggerReloginIfStale } from "../utils/session";
 
 const router = Router();
 
@@ -26,18 +26,23 @@ async function getLessons(req: Request, res: Response, next: NextFunction): Prom
 
     for (const [key, session] of children) {
       if (child !== undefined && !key.includes(child)) continue;
-      if (!hasTab(session, pronote.TabLocation.Timetable)) {
-        out[key] = [];
-        continue;
+      try {
+        const timetable = await pronote.timetableFromIntervals(session, start, end);
+        pronote.parseTimetable(session, timetable, {
+          withSuperposedCanceledClasses: false,
+          withCanceledClasses: true,
+          withPlannedClasses: true,
+        });
+        out[key] = serialize(sortByField(timetable.classes));
+      } catch (err) {
+        if (err instanceof pronote.AccessDeniedError || err instanceof pronote.SessionExpiredError) {
+          logger.warn(`Lessons access denied for ${key}: ${err}`);
+          triggerReloginIfStale();
+          out[key] = [];
+        } else {
+          throw err;
+        }
       }
-
-      const timetable = await pronote.timetableFromIntervals(session, start, end);
-      pronote.parseTimetable(session, timetable, {
-        withSuperposedCanceledClasses: false,
-        withCanceledClasses: true,
-        withPlannedClasses: true,
-      });
-      out[key] = serialize(sortByField(timetable.classes));
     }
 
     logger.debug(`Loaded lessons for ${child ?? "all"}`);

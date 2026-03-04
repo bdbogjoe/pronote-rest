@@ -4,8 +4,8 @@ import { config } from "../config";
 import { children } from "../state";
 import { serialize } from "../utils/serialize";
 import { sortByField } from "../utils/sort";
-import { hasTab } from "../utils/tabs";
 import { logger } from "../logger";
+import { triggerReloginIfStale } from "../utils/session";
 
 const router = Router();
 
@@ -51,19 +51,22 @@ async function getHomework(req: Request, res: Response, next: NextFunction): Pro
 
     for (const [key, session] of children) {
       if (child !== undefined && !key.includes(child)) continue;
-      if (!hasTab(session, pronote.TabLocation.Assignments)) {
-        out[key] = [];
-        continue;
+      try {
+        let work = await pronote.assignmentsFromIntervals(session, start, end);
+        work = sortByField(work) as typeof work;
+        if (isTodo) {
+          work = work.filter((w) => !w.done);
+        }
+        out[key] = serialize(work);
+      } catch (err) {
+        if (err instanceof pronote.AccessDeniedError || err instanceof pronote.SessionExpiredError) {
+          logger.warn(`Homework access denied for ${key}: ${err}`);
+          triggerReloginIfStale();
+          out[key] = [];
+        } else {
+          throw err;
+        }
       }
-
-      let work = await pronote.assignmentsFromIntervals(session, start, end);
-      work = sortByField(work) as typeof work;
-
-      if (isTodo) {
-        work = work.filter((w) => !w.done);
-      }
-
-      out[key] = serialize(work);
     }
 
     logger.debug(`Loaded homework for ${child ?? "all"}`);
