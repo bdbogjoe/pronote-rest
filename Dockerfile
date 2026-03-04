@@ -20,12 +20,12 @@ USER app
 WORKDIR /home/app
 
 # Install all dependencies (including dev) for building
-COPY package*.json ./
+COPY --chown=app:app package*.json ./
 RUN npm ci
 
 # Build TypeScript
-COPY tsconfig.json ./
-COPY src ./src
+COPY --chown=app:app tsconfig.json ./
+COPY --chown=app:app src ./src
 RUN npm run build
 
 # Remove dev dependencies after build
