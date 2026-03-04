@@ -6,6 +6,7 @@ import { serialize } from "../utils/serialize";
 import { sortByField } from "../utils/sort";
 import { logger } from "../logger";
 import { triggerReloginIfStale } from "../utils/session";
+import { toCompatLesson } from "../utils/compat";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ async function getLessons(req: Request, res: Response, next: NextFunction): Prom
           withCanceledClasses: true,
           withPlannedClasses: true,
         });
-        out[key] = serialize(sortByField(timetable.classes));
+        out[key] = serialize(sortByField(timetable.classes.map(toCompatLesson)));
       } catch (err) {
         if (err instanceof pronote.AccessDeniedError || err instanceof pronote.SessionExpiredError) {
           logger.warn(`Lessons access denied for ${key}: ${err}`);

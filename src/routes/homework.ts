@@ -6,6 +6,7 @@ import { serialize } from "../utils/serialize";
 import { sortByField } from "../utils/sort";
 import { logger } from "../logger";
 import { triggerReloginIfStale } from "../utils/session";
+import { toCompatHomework } from "../utils/compat";
 
 const router = Router();
 
@@ -57,7 +58,7 @@ async function getHomework(req: Request, res: Response, next: NextFunction): Pro
         if (isTodo) {
           work = work.filter((w) => !w.done);
         }
-        out[key] = serialize(work);
+        out[key] = serialize(work.map(toCompatHomework));
       } catch (err) {
         if (err instanceof pronote.AccessDeniedError || err instanceof pronote.SessionExpiredError) {
           logger.warn(`Homework access denied for ${key}: ${err}`);

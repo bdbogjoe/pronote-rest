@@ -7,45 +7,9 @@ import { logger } from "../logger";
 import { getGradePeriods, getCurrentPeriod } from "./periods";
 import { hasTab } from "../utils/tabs";
 import { triggerReloginIfStale } from "../utils/session";
+import { toCompatGrade, toCompatAbsence, toCompatDelay } from "../utils/compat";
 
 const router = Router();
-
-const GRADE_KIND_STRINGS: Record<number, string> = {
-  1: "Absent",
-  2: "Dispense",
-  3: "NonNote",
-  4: "Inapte",
-  5: "NonRendu",
-  6: "AbsentZero",
-  7: "NonRenduZero",
-  8: "Felicitations",
-};
-
-function gradeValueToString(gv: pronote.GradeValue | undefined): string | null {
-  if (!gv) return null;
-  if (gv.kind !== 0) return GRADE_KIND_STRINGS[gv.kind] ?? null;
-  return Number.isNaN(gv.points) ? null : String(gv.points);
-}
-
-function toCompatGrade(grade: pronote.Grade, periodName: string): Record<string, unknown> {
-  return {
-    id: grade.id,
-    grade: gradeValueToString(grade.value),
-    out_of: gradeValueToString(grade.outOf),
-    default_out_of: gradeValueToString(grade.defaultOutOf),
-    date: grade.date,
-    subject: grade.subject,
-    period: periodName,
-    average: gradeValueToString(grade.average),
-    max: gradeValueToString(grade.max),
-    min: gradeValueToString(grade.min),
-    coefficient: String(grade.coefficient),
-    comment: grade.comment,
-    is_bonus: grade.isBonus,
-    is_optionnal: grade.isOptional,
-    is_out_of_20: grade.isOutOf20,
-  };
-}
 
 // Map a URL type to the pawnote TabLocation used for period listing
 function tabForType(type: string): pronote.TabLocation | undefined {
@@ -108,11 +72,11 @@ async function fetchForPeriod(
     }
     case "absences": {
       const nb = await pronote.notebook(session, period);
-      return { kind: "list", data: nb.absences };
+      return { kind: "list", data: nb.absences.map(toCompatAbsence) };
     }
     case "delays": {
       const nb = await pronote.notebook(session, period);
-      return { kind: "list", data: nb.delays };
+      return { kind: "list", data: nb.delays.map(toCompatDelay) };
     }
     case "punishments": {
       const nb = await pronote.notebook(session, period);
