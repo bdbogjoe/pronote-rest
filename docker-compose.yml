@@ -1,8 +1,7 @@
-version: "3"
 services:
   pronote-rest:
     container_name: pronote-rest
-    image: bdbogjoe/pronote-rest:master
+    image: bdbogjoe/pronote-rest:feature-pawnote
     restart: unless-stopped
     ports:
       - 5000:5000
