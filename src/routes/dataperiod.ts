@@ -8,6 +8,7 @@ import { getGradePeriods, getCurrentPeriod } from "./periods";
 import { hasTab } from "../utils/tabs";
 import { triggerReloginIfStale } from "../utils/session";
 import { toCompatGrade, toCompatAbsence, toCompatDelay } from "../utils/compat";
+import { pronotepyCompat } from "../config";
 
 const router = Router();
 
@@ -64,7 +65,7 @@ async function fetchForPeriod(
   switch (type) {
     case "grades": {
       const overview = await pronote.gradesOverview(session, period);
-      return { kind: "list", data: overview.grades.map((g) => toCompatGrade(g, period.name)) };
+      return { kind: "list", data: pronotepyCompat ? overview.grades.map((g) => toCompatGrade(g, period.name)) : overview.grades };
     }
     case "evaluations": {
       const evals = await pronote.evaluations(session, period);
@@ -72,11 +73,11 @@ async function fetchForPeriod(
     }
     case "absences": {
       const nb = await pronote.notebook(session, period);
-      return { kind: "list", data: nb.absences.map(toCompatAbsence) };
+      return { kind: "list", data: pronotepyCompat ? nb.absences.map(toCompatAbsence) : nb.absences };
     }
     case "delays": {
       const nb = await pronote.notebook(session, period);
-      return { kind: "list", data: nb.delays.map(toCompatDelay) };
+      return { kind: "list", data: pronotepyCompat ? nb.delays.map(toCompatDelay) : nb.delays };
     }
     case "punishments": {
       const nb = await pronote.notebook(session, period);

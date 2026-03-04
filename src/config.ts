@@ -61,3 +61,10 @@ export function loadConfig(): AppConfig {
 export function storeConfig(): void {
   fs.writeFileSync(CONFIG_GENERATED_JSON, JSON.stringify(config, null, 2));
 }
+
+/**
+ * When true, all API responses use the pronotepy-compatible field names and value formats.
+ * Set PRONOTEPY_COMPAT=false to get raw pawnote objects instead.
+ * Defaults to true.
+ */
+export const pronotepyCompat: boolean = process.env.PRONOTEPY_COMPAT !== "false";

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import * as pronote from "@niicojs/pawnote";
-import { config } from "../config";
+import { config, pronotepyCompat } from "../config";
 import { children } from "../state";
 import { serialize } from "../utils/serialize";
 import { sortByField } from "../utils/sort";
@@ -58,7 +58,7 @@ async function getHomework(req: Request, res: Response, next: NextFunction): Pro
         if (isTodo) {
           work = work.filter((w) => !w.done);
         }
-        out[key] = serialize(work.map(toCompatHomework));
+        out[key] = serialize(pronotepyCompat ? work.map(toCompatHomework) : work);
       } catch (err) {
         if (err instanceof pronote.AccessDeniedError || err instanceof pronote.SessionExpiredError) {
           logger.warn(`Homework access denied for ${key}: ${err}`);

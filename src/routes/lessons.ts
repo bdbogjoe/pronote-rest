@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import * as pronote from "@niicojs/pawnote";
-import { config } from "../config";
+import { config, pronotepyCompat } from "../config";
 import { children } from "../state";
 import { serialize } from "../utils/serialize";
 import { sortByField } from "../utils/sort";
@@ -34,7 +34,7 @@ async function getLessons(req: Request, res: Response, next: NextFunction): Prom
           withCanceledClasses: true,
           withPlannedClasses: true,
         });
-        out[key] = serialize(sortByField(timetable.classes.map(toCompatLesson)));
+        out[key] = serialize(sortByField(pronotepyCompat ? timetable.classes.map(toCompatLesson) : timetable.classes));
       } catch (err) {
         if (err instanceof pronote.AccessDeniedError || err instanceof pronote.SessionExpiredError) {
           logger.warn(`Lessons access denied for ${key}: ${err}`);
