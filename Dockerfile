@@ -1,33 +1,42 @@
 # syntax=docker/dockerfile:1
-FROM python:3.13-slim-bullseye
+FROM node:20-slim
 
-RUN apt-get update
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    chromium \
+    fonts-freefont-ttf \
+    ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives
 
-RUN apt-get install --no-install-recommends -y chromium chromium-driver gcc build-essential
+# Tell Puppeteer to use system Chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists
-RUN rm -rf /var/cache/apt/archives
-
-RUN useradd  app
-RUN mkdir -p /home/app/config
-RUN mkdir -p /home/app/screenshot
+RUN useradd app
+RUN mkdir -p /home/app/config /home/app/screenshot
 RUN chown -R app:app /home/app
 
 USER app
 WORKDIR /home/app
 
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+# Install all dependencies (including dev) for building
+COPY package*.json ./
+RUN npm ci
 
-COPY *.py ./
+# Build TypeScript
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --omit=dev
+
+# Copy static assets
 COPY logging.conf .
-
 COPY templates templates
 COPY static static
 
-ENTRYPOINT [ "python" ]
-
-CMD [ "app.py" ]
+ENTRYPOINT ["node"]
+CMD ["dist/index.js"]
 
 EXPOSE 5000

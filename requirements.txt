@@ -1,7 +1,0 @@
-flask
-python-dateutil
-pronotepy==2.14.5
-readerwriterlock
-Flask-Limiter
-APScheduler
-selenium
