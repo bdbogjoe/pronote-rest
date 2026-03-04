@@ -16,6 +16,7 @@ import periodsRouter from "./routes/periods";
 import dataperiodRouter from "./routes/dataperiod";
 
 export const app = express();
+app.set("trust proxy", 1);
 
 // Rate limiting: 2 requests/second per IP
 const limiter = rateLimit({
