@@ -186,7 +186,10 @@ async function getDataPeriod(req: Request, res: Response, next: NextFunction): P
       if (listData !== null) {
         out[key] = serialize(sortByFieldDesc(listData));
       } else {
-        out[key] = mapData;
+        // Remove periods with no data
+        out[key] = Object.fromEntries(
+          Object.entries(mapData).filter(([, v]) => Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined)
+        );
       }
     }
 
