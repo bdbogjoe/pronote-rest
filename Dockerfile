@@ -31,10 +31,6 @@ RUN npm run build
 # Remove dev dependencies after build
 RUN npm prune --omit=dev
 
-# Copy static assets
-COPY logging.conf .
-COPY templates templates
-COPY static static
 
 ENTRYPOINT ["node"]
 CMD ["dist/index.js"]
