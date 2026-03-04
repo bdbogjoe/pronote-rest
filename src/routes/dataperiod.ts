@@ -188,7 +188,15 @@ async function getDataPeriod(req: Request, res: Response, next: NextFunction): P
       } else {
         // Remove periods with no data
         out[key] = Object.fromEntries(
-          Object.entries(mapData).filter(([, v]) => Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined)
+          Object.entries(mapData).filter(([, v]) => {
+            if (v === null || v === undefined) return false;
+            if (Array.isArray(v)) return v.length > 0;
+            if (typeof v === "object" && "points" in (v as object)) {
+              const points = (v as Record<string, unknown>).points;
+              return points !== null && !Number.isNaN(points);
+            }
+            return true;
+          })
         );
       }
     }
