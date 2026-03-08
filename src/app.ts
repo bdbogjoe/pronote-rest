@@ -2,10 +2,12 @@ import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import rateLimit from "express-rate-limit";
 import * as pronote from "@niicojs/pawnote";
+import swaggerUi from "swagger-ui-express";
 import { logger } from "./logger";
 import { children } from "./state";
 import { login, loginAll } from "./auth/login";
 import { setForceLogin, errorCount, setErrorCount, lastLoginTime } from "./state";
+import { swaggerSpec } from "./swagger";
 
 import lessonsRouter from "./routes/lessons";
 import homeworkRouter from "./routes/homework";
@@ -18,7 +20,11 @@ import dataperiodRouter from "./routes/dataperiod";
 export const app = express();
 app.set("trust proxy", 1);
 
-// Rate limiting: 2 requests/second per IP
+// Swagger UI — registered before rate limiter so its assets load freely
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/api-docs.json", (_req: Request, res: Response) => res.json(swaggerSpec));
+
+// Rate limiting: 2 requests/second per IP (applied to all data routes)
 const limiter = rateLimit({
   windowMs: 1000,
   max: 2,
