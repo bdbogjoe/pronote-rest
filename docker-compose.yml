@@ -1,8 +1,7 @@
 services:
   pronote-rest:
     container_name: pronote-rest
-    image: bdbogjoe/pronote-rest:devel
-      #build: .
+    build: .
     restart: unless-stopped
     ports:
       - 5000:5000
