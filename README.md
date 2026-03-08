@@ -24,7 +24,7 @@ services:
 
 # using docker :
 ```
-docker run -p 5000:5000 -v $(pwd)/config:/home/app/config bdbogjoe/pronote-rest:master
+docker run -p 5000:5000 -v $(pwd)/config:/home/node/config bdbogjoe/pronote-rest:master
 ```
 
 # Go to home page to get list of end points:
