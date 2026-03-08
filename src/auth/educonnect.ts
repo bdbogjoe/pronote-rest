@@ -135,10 +135,30 @@ export async function loginEduConnect(account: AccountConfig): Promise<void> {
     // Click QR code button
     await page.waitForSelector(".ibe_iconebtn.ibe_actif", { timeout: 15000 });
     await page.screenshot({ path: "screenshot/screenshot-3.png" });
-    await page.click(".ibe_iconebtn.ibe_actif");
 
     // Fill PIN (give the modal/overlay more time to appear)
-    await page.waitForSelector("input[type='password']", { timeout: 30000 });
+    const MAX_RETRIES = 3;
+    let attempt = 0;
+    let success = false;
+
+    while (attempt < MAX_RETRIES && !success) {
+      try {
+        await page.click(".ibe_iconebtn.ibe_actif");
+        await page.waitForSelector("input[type='password']", { timeout: 15000 });
+        success = true;
+      } catch (err) {
+        attempt++;
+        logger.warn(`Tentative Getting QR Code ${attempt}/${MAX_RETRIES} échouée`);
+    
+        if (attempt >= MAX_RETRIES) {
+          logger.error("Échec après", MAX_RETRIES, "tentatives.");
+          throw err;
+        } else {
+          await page.waitForTimeout(2000); // Pause de 2s avant de réessayer
+        }
+      }
+    }
+
     await page.type("input[type='password']", account.pin ?? "");
     await page.click("button");
     await page.screenshot({ path: "screenshot/screenshot-4.png" });
